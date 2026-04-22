@@ -25,18 +25,19 @@ export default function NoteDetails() {
   }, [id, user?.id]);
 
   const note = useMemo(() => (id ? notesApi.get(id) : undefined), [id, tick]);
+  // Deterministic fake page count based on note id, so it's stable per note (demo only).
+  const pageCount = useMemo(() => {
+    if (!note) return 0;
+    let h = 0;
+    for (let i = 0; i < note.id.length; i++) h = (h * 31 + note.id.charCodeAt(i)) | 0;
+    return (Math.abs(h) % 40) + 8; // 8–47 pages
+  }, [note]);
+
   if (!note) return <div className="text-center py-20 text-muted-foreground">Note not found. <Link className="text-primary" to="/find">Back to notes</Link></div>;
 
   const liked = user ? interactionsApi.isLiked(user.id, note.id) : false;
   const disliked = user ? interactionsApi.isDisliked(user.id, note.id) : false;
   const saved = user ? interactionsApi.isSaved(user.id, note.id) : false;
-
-  // Deterministic fake page count based on note id, so it's stable per note (demo only).
-  const pageCount = useMemo(() => {
-    let h = 0;
-    for (let i = 0; i < note.id.length; i++) h = (h * 31 + note.id.charCodeAt(i)) | 0;
-    return (Math.abs(h) % 40) + 8; // 8–47 pages
-  }, [note.id]);
 
   const act = (fn: () => void) => {
     if (!user) { toast.error("Please login to continue"); navigate("/login"); return; }
