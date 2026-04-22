@@ -14,6 +14,7 @@ import Contact from "./pages/Contact";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/dashboard/Dashboard";
 import Saved from "./pages/dashboard/Saved";
+import Profile from "./pages/Profile";
 import { AuthProvider } from "./context/AuthContext";
 import { ThemeProvider } from "./context/ThemeContext";
 import { useEffect } from "react";
@@ -43,6 +44,7 @@ const App = () => {
                   <Route path="/contact" element={<Contact />} />
                   <Route path="/dashboard" element={<Dashboard />} />
                   <Route path="/dashboard/saved" element={<Saved />} />
+                  <Route path="/profile" element={<Profile />} />
                 </Route>
                 <Route path="*" element={<NotFound />} />
               </Routes>
