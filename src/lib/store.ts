@@ -1,4 +1,4 @@
-import { SEED_NOTES, SEED_CONTRIBUTORS } from "@/data/seed";
+import { SEED_NOTES } from "@/data/seed";
 import type { Note, Contributor, User } from "./types";
 
 // Simple localStorage-backed store. Structure mirrors a future Mongo API so
