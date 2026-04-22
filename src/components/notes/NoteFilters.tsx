@@ -35,11 +35,11 @@ export default function NoteFilters({ value, onChange }: { value: FilterState; o
         <Select label="Type" value={value.type} onChange={(v) => set("type", v as NoteType | "")} options={["", "Slide", "Hand Notes"]} />
         <Field label="Course Code">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <input
               value={value.courseCode}
               onChange={(e) => set("courseCode", e.target.value)}
-              className="input-style pl-9"
+              className="input-style pl-10"
               placeholder="CSE 2101"
             />
           </div>

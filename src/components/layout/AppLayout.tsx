@@ -1,8 +1,8 @@
 import { Outlet, useLocation } from "react-router-dom";
 import Sidebar from "./Sidebar";
-import Topbar from "./Topbar";
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { Menu } from "lucide-react";
 
 export default function AppLayout() {
   const [collapsed, setCollapsed] = useState(false);
@@ -47,7 +47,12 @@ export default function AppLayout() {
       </AnimatePresence>
 
       <div className="flex-1 min-w-0 flex flex-col">
-        <Topbar onToggleSidebar={() => setMobileOpen(true)} />
+        {/* Mobile-only slim bar: just a menu button */}
+        <div className="md:hidden sticky top-0 z-30 glass border-b border-border flex items-center px-4 h-14">
+          <button onClick={() => setMobileOpen(true)} className="p-2 rounded-lg hover:bg-muted" aria-label="Open menu">
+            <Menu className="w-5 h-5" />
+          </button>
+        </div>
         <main className="flex-1 overflow-x-hidden">
           <AnimatePresence mode="wait">
             <motion.div

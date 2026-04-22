@@ -1,12 +1,14 @@
 import { NavLink, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   Home, Search, Users, Info, Mail, LayoutDashboard, LogIn, Bookmark,
-  GraduationCap, ChevronLeft, ChevronRight, LogOut,
+  GraduationCap, ChevronLeft, ChevronRight, LogOut, Moon, Sun, UserCircle2,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { useTheme } from "@/context/ThemeContext";
 import { cn } from "@/lib/utils";
-import { useState } from "react";
+import { toast } from "sonner";
 
 const publicLinks = [
   { to: "/", label: "Home", icon: Home },
@@ -19,11 +21,20 @@ const publicLinks = [
 const privateLinks = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/dashboard/saved", label: "Saved Notes", icon: Bookmark },
+  { to: "/profile", label: "Profile", icon: UserCircle2 },
 ];
 
 export default function Sidebar({ collapsed, setCollapsed }: { collapsed: boolean; setCollapsed: (v: boolean) => void }) {
   const { user, logout } = useAuth();
-  const loc = useLocation();
+  const { theme, toggle } = useTheme();
+  const navigate = useNavigate();
+  useLocation();
+
+  const handleLogout = () => {
+    logout();
+    toast.success("Signed out");
+    navigate("/", { replace: true });
+  };
 
   return (
     <motion.aside
@@ -58,16 +69,35 @@ export default function Sidebar({ collapsed, setCollapsed }: { collapsed: boolea
 
       <div className="p-3 border-t border-sidebar-border space-y-2">
         {user ? (
-          <button
-            onClick={logout}
-            className={cn(
-              "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-sidebar-foreground hover:bg-sidebar-accent transition-colors",
-              collapsed && "justify-center"
-            )}
-          >
-            <LogOut className="w-4 h-4 shrink-0" />
-            {!collapsed && "Logout"}
-          </button>
+          <>
+            <NavLink
+              to="/profile"
+              className={cn(
+                "w-full flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-sidebar-accent transition-colors",
+                collapsed && "justify-center"
+              )}
+            >
+              <div className="w-9 h-9 rounded-full bg-gradient-primary text-primary-foreground flex items-center justify-center text-xs font-bold shrink-0">
+                {user.name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
+              </div>
+              {!collapsed && (
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-semibold text-sidebar-foreground truncate">{user.name}</div>
+                  <div className="text-[11px] text-muted-foreground truncate">View profile</div>
+                </div>
+              )}
+            </NavLink>
+            <button
+              onClick={handleLogout}
+              className={cn(
+                "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-sidebar-foreground hover:bg-sidebar-accent transition-colors",
+                collapsed && "justify-center"
+              )}
+            >
+              <LogOut className="w-4 h-4 shrink-0" />
+              {!collapsed && "Logout"}
+            </button>
+          </>
         ) : (
           <NavLink
             to="/login"
@@ -80,6 +110,17 @@ export default function Sidebar({ collapsed, setCollapsed }: { collapsed: boolea
             {!collapsed && "Login / Register"}
           </NavLink>
         )}
+        <button
+          onClick={toggle}
+          className={cn(
+            "w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium text-sidebar-foreground hover:bg-sidebar-accent transition-colors",
+            collapsed && "justify-center"
+          )}
+          aria-label="Toggle theme"
+        >
+          {theme === "dark" ? <Sun className="w-4 h-4 shrink-0" /> : <Moon className="w-4 h-4 shrink-0" />}
+          {!collapsed && (theme === "dark" ? "Light mode" : "Dark mode")}
+        </button>
         <button
           onClick={() => setCollapsed(!collapsed)}
           className={cn(

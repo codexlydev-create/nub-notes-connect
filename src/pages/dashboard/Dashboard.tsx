@@ -132,20 +132,48 @@ function Stat({ icon: Icon, v }: any) {
 }
 
 function UploadModal({ existing, onClose, onSaved, user }: any) {
+  const initialDept = existing?.department ?? DEPARTMENTS[0];
+  const initialCourseList = COURSES_BY_DEPT[initialDept] ?? [];
+  const isCustomDeptInitially = existing && !DEPARTMENTS.includes(existing.department);
+  const isCustomCourseInitially = existing && initialCourseList.length > 0 && !initialCourseList.includes(existing.course);
+
+  const [deptChoice, setDeptChoice] = useState<string>(isCustomDeptInitially ? "Others" : initialDept);
+  const [courseChoice, setCourseChoice] = useState<string>(
+    isCustomDeptInitially || isCustomCourseInitially ? "Others" : (existing?.course ?? initialCourseList[0] ?? "")
+  );
   const [f, setF] = useState({
     title: existing?.title ?? "",
-    department: existing?.department ?? DEPARTMENTS[0],
-    course: existing?.course ?? COURSES_BY_DEPT[DEPARTMENTS[0]][0],
+    department: existing?.department ?? initialDept,
+    course: existing?.course ?? initialCourseList[0] ?? "",
     courseCode: existing?.courseCode ?? "",
     description: existing?.description ?? "",
     type: (existing?.type ?? "Slide") as "Slide" | "Hand Notes",
   });
   const [fileName, setFileName] = useState<string | null>(null);
-  const courses = COURSES_BY_DEPT[f.department] ?? [];
+  const courses = deptChoice === "Others" ? [] : (COURSES_BY_DEPT[deptChoice] ?? []);
+
+  const handleDeptChange = (v: string) => {
+    setDeptChoice(v);
+    if (v === "Others") {
+      setF((p) => ({ ...p, department: "", course: "" }));
+      setCourseChoice("Others");
+    } else {
+      const first = COURSES_BY_DEPT[v]?.[0] ?? "";
+      setF((p) => ({ ...p, department: v, course: first }));
+      setCourseChoice(first);
+    }
+  };
+  const handleCourseChange = (v: string) => {
+    setCourseChoice(v);
+    if (v === "Others") setF((p) => ({ ...p, course: "" }));
+    else setF((p) => ({ ...p, course: v }));
+  };
 
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!f.title || !f.courseCode) { toast.error("Title and course code are required"); return; }
+    if (!f.department.trim()) { toast.error("Department is required"); return; }
+    if (!f.course.trim()) { toast.error("Course is required"); return; }
     if (existing) {
       notesApi.update(existing.id, { ...f });
       toast.success("Updated");
@@ -185,14 +213,37 @@ function UploadModal({ existing, onClose, onSaved, user }: any) {
           <F label="Title"><input className="inp" value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} /></F>
           <div className="grid grid-cols-2 gap-3">
             <F label="Department">
-              <select className="inp" value={f.department} onChange={(e) => setF({ ...f, department: e.target.value, course: COURSES_BY_DEPT[e.target.value][0] })}>
-                {DEPARTMENTS.map((d) => <option key={d}>{d}</option>)}
+              <select className="inp" value={deptChoice} onChange={(e) => handleDeptChange(e.target.value)}>
+                {DEPARTMENTS.map((d) => <option key={d} value={d}>{d}</option>)}
+                <option value="Others">Others</option>
               </select>
+              {deptChoice === "Others" && (
+                <input
+                  className="inp mt-2"
+                  placeholder="Enter department name"
+                  value={f.department}
+                  onChange={(e) => setF({ ...f, department: e.target.value })}
+                />
+              )}
             </F>
             <F label="Course">
-              <select className="inp" value={f.course} onChange={(e) => setF({ ...f, course: e.target.value })}>
-                {courses.map((c) => <option key={c}>{c}</option>)}
+              <select
+                className="inp"
+                value={courseChoice}
+                onChange={(e) => handleCourseChange(e.target.value)}
+                disabled={deptChoice !== "Others" && courses.length === 0}
+              >
+                {courses.map((c) => <option key={c} value={c}>{c}</option>)}
+                <option value="Others">Others</option>
               </select>
+              {courseChoice === "Others" && (
+                <input
+                  className="inp mt-2"
+                  placeholder="Enter course name"
+                  value={f.course}
+                  onChange={(e) => setF({ ...f, course: e.target.value })}
+                />
+              )}
             </F>
           </div>
           <div className="grid grid-cols-2 gap-3">
