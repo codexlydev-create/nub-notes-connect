@@ -11,7 +11,7 @@ const K = {
   likes: "ns_likes",
   dislikes: "ns_dislikes",
   saves: "ns_saves",
-  contributors: "ns_contributors",
+  viewed: "ns_viewed",
   theme: "ns_theme",
 };
 
@@ -27,10 +27,8 @@ function write<T>(key: string, value: T) {
   localStorage.setItem(key, JSON.stringify(value));
 }
 
-// Seed once
 export function initStore() {
   if (!localStorage.getItem(K.notes)) write(K.notes, SEED_NOTES);
-  if (!localStorage.getItem(K.contributors)) write(K.contributors, SEED_CONTRIBUTORS);
   if (!localStorage.getItem(K.users)) write<User[]>(K.users, []);
 }
 
@@ -55,9 +53,36 @@ export const notesApi = {
   },
 };
 
-// Contributors
+// Contributors — derived from real uploaders + registered users
 export const contributorsApi = {
-  list: (): Contributor[] => read<Contributor[]>(K.contributors, []),
+  list: (): Contributor[] => {
+    const notes = notesApi.list();
+    const users = read<(User & { password: string })[]>(K.users, []);
+    const byId = new Map<string, Contributor>();
+    for (const n of notes) {
+      const u = users.find((x) => x.id === n.uploadedById);
+      const existing = byId.get(n.uploadedById) ?? {
+        id: n.uploadedById,
+        name: u?.name ?? n.uploadedBy,
+        email: u?.email ?? "",
+        studentId: u?.studentId ?? "",
+        role: "Contributor",
+        notesCount: 0,
+        views: 0,
+        likes: 0,
+        rank: 0,
+      };
+      existing.notesCount += 1;
+      existing.views += n.views;
+      existing.likes += n.likes;
+      byId.set(n.uploadedById, existing);
+    }
+    const arr = Array.from(byId.values())
+      .map((c) => ({ ...c, role: (c.notesCount >= 10 ? "Active Uploader" : "Contributor") as Contributor["role"] }))
+      .sort((a, b) => b.notesCount - a.notesCount || b.likes - a.likes);
+    arr.forEach((c, i) => (c.rank = i + 1));
+    return arr;
+  },
 };
 
 // Auth
@@ -72,6 +97,7 @@ export const authApi = {
       studentId: u.studentId,
       password: u.password,
       role: "Contributor",
+      emailVerified: true,
     };
     users.push(user);
     write(K.users, users);
@@ -95,6 +121,42 @@ export const authApi = {
     if (i === -1) throw new Error("No account with that email");
     users[i].password = newPassword;
     write(K.users, users);
+  },
+  updateProfile: (id: string, patch: { name?: string; email?: string; studentId?: string }) => {
+    const users = read<(User & { password: string })[]>(K.users, []);
+    const i = users.findIndex((x) => x.id === id);
+    if (i === -1) throw new Error("User not found");
+    if (patch.email && patch.email !== users[i].email) {
+      if (users.some((u) => u.email === patch.email)) throw new Error("Email already in use");
+      users[i].email = patch.email;
+      users[i].emailVerified = false;
+    }
+    if (patch.name) users[i].name = patch.name;
+    if (patch.studentId) users[i].studentId = patch.studentId;
+    write(K.users, users);
+    const { password, ...safe } = users[i];
+    write(K.session, safe);
+    return safe as User;
+  },
+  changePassword: (id: string, currentPassword: string, newPassword: string) => {
+    const users = read<(User & { password: string })[]>(K.users, []);
+    const i = users.findIndex((x) => x.id === id);
+    if (i === -1) throw new Error("User not found");
+    if (users[i].password !== currentPassword) throw new Error("Current password is incorrect");
+    users[i].password = newPassword;
+    write(K.users, users);
+  },
+  verifyEmail: (id: string) => {
+    const users = read<(User & { password: string })[]>(K.users, []);
+    const i = users.findIndex((x) => x.id === id);
+    if (i === -1) throw new Error("User not found");
+    users[i].emailVerified = true;
+    write(K.users, users);
+    const current = read<User | null>(K.session, null);
+    if (current?.id === id) {
+      const { password, ...safe } = users[i];
+      write(K.session, safe);
+    }
   },
 };
 
@@ -141,5 +203,29 @@ export const interactionsApi = {
     (read<Record<string, string[]>>(K.saves, {})[userId] ?? []).includes(noteId),
   savedIds: (userId: string) => read<Record<string, string[]>>(K.saves, {})[userId] ?? [],
 };
+
+// Per-user view tracking — increments once per user per note
+export const viewsApi = {
+  hasViewed: (userKey: string, noteId: string) => {
+    const map = read<Record<string, string[]>>(K.viewed, {});
+    return (map[userKey] ?? []).includes(noteId);
+  },
+  markViewed: (userKey: string, noteId: string) => {
+    const map = read<Record<string, string[]>>(K.viewed, {});
+    const list = map[userKey] ?? [];
+    if (list.includes(noteId)) return false;
+    map[userKey] = [...list, noteId];
+    write(K.viewed, map);
+    return true;
+  },
+};
+
+// Anonymous viewer id — stable per browser for unauthenticated view-dedup
+export function anonViewerId() {
+  const KEY = "ns_anon";
+  let v = localStorage.getItem(KEY);
+  if (!v) { v = "anon_" + Math.random().toString(36).slice(2) + Date.now(); localStorage.setItem(KEY, v); }
+  return v;
+}
 
 export const themeKey = K.theme;
