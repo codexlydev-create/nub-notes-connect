@@ -1,8 +1,8 @@
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { ArrowLeft, Eye, Calendar, User as UserIcon, Download, ExternalLink, ZoomIn, ZoomOut, Maximize2, RefreshCcw, ThumbsUp, ThumbsDown, Bookmark } from "lucide-react";
-import { notesApi, interactionsApi } from "@/lib/store";
+import { ArrowLeft, Eye, Calendar, User as UserIcon, Download, ExternalLink, ZoomIn, ZoomOut, Maximize2, RefreshCcw, ThumbsUp, ThumbsDown, Bookmark, FileText } from "lucide-react";
+import { notesApi, interactionsApi, viewsApi, anonViewerId } from "@/lib/store";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 
@@ -14,8 +14,15 @@ export default function NoteDetails() {
   const [zoom, setZoom] = useState(100);
 
   useEffect(() => {
-    if (id) notesApi.incrementViews(id);
-  }, [id]);
+    if (!id) return;
+    const viewerKey = user?.id ?? anonViewerId();
+    const firstView = viewsApi.markViewed(viewerKey, id);
+    if (firstView) {
+      notesApi.incrementViews(id);
+      setTick((t) => t + 1);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, user?.id]);
 
   const note = useMemo(() => (id ? notesApi.get(id) : undefined), [id, tick]);
   if (!note) return <div className="text-center py-20 text-muted-foreground">Note not found. <Link className="text-primary" to="/find">Back to notes</Link></div>;
@@ -23,6 +30,13 @@ export default function NoteDetails() {
   const liked = user ? interactionsApi.isLiked(user.id, note.id) : false;
   const disliked = user ? interactionsApi.isDisliked(user.id, note.id) : false;
   const saved = user ? interactionsApi.isSaved(user.id, note.id) : false;
+
+  // Deterministic fake page count based on note id, so it's stable per note (demo only).
+  const pageCount = useMemo(() => {
+    let h = 0;
+    for (let i = 0; i < note.id.length; i++) h = (h * 31 + note.id.charCodeAt(i)) | 0;
+    return (Math.abs(h) % 40) + 8; // 8–47 pages
+  }, [note.id]);
 
   const act = (fn: () => void) => {
     if (!user) { toast.error("Please login to continue"); navigate("/login"); return; }
@@ -50,6 +64,7 @@ export default function NoteDetails() {
             <div className="flex flex-wrap gap-4 text-sm text-muted-foreground mb-5">
               <Meta icon={UserIcon}>{note.uploadedBy}</Meta>
               <Meta icon={Eye}>{note.views} views</Meta>
+              <Meta icon={FileText}>{pageCount} pages</Meta>
               <Meta icon={Calendar}>{new Date(note.createdAt).toLocaleDateString()}</Meta>
             </div>
             <p className="text-sm leading-relaxed text-foreground/80">{note.description}</p>
