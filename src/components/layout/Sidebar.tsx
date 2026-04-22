@@ -1,0 +1,135 @@
+import { NavLink, useLocation } from "react-router-dom";
+import { motion } from "framer-motion";
+import {
+  Home, Search, Users, Info, Mail, LayoutDashboard, LogIn, Bookmark,
+  GraduationCap, ChevronLeft, ChevronRight, LogOut,
+} from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
+import { cn } from "@/lib/utils";
+import { useState } from "react";
+
+const publicLinks = [
+  { to: "/", label: "Home", icon: Home },
+  { to: "/find", label: "Find Notes", icon: Search },
+  { to: "/contributors", label: "Contributors", icon: Users },
+  { to: "/about", label: "About", icon: Info },
+  { to: "/contact", label: "Contact", icon: Mail },
+];
+
+const privateLinks = [
+  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/dashboard/saved", label: "Saved Notes", icon: Bookmark },
+];
+
+export default function Sidebar({ collapsed, setCollapsed }: { collapsed: boolean; setCollapsed: (v: boolean) => void }) {
+  const { user, logout } = useAuth();
+  const loc = useLocation();
+
+  return (
+    <motion.aside
+      initial={false}
+      animate={{ width: collapsed ? 80 : 260 }}
+      transition={{ type: "spring", stiffness: 260, damping: 30 }}
+      className="sticky top-0 h-screen shrink-0 border-r border-border bg-sidebar flex flex-col"
+    >
+      <div className="flex items-center gap-3 px-5 py-5 border-b border-sidebar-border">
+        <div className="w-9 h-9 rounded-xl bg-gradient-primary flex items-center justify-center shadow-elegant shrink-0">
+          <GraduationCap className="w-5 h-5 text-primary-foreground" />
+        </div>
+        {!collapsed && (
+          <div className="overflow-hidden">
+            <div className="font-bold text-sidebar-foreground leading-tight">Note Share</div>
+            <div className="text-[11px] text-muted-foreground">NUB community</div>
+          </div>
+        )}
+      </div>
+
+      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
+        <SectionLabel collapsed={collapsed}>Explore</SectionLabel>
+        {publicLinks.map((l) => <Item key={l.to} {...l} collapsed={collapsed} />)}
+
+        {user && (
+          <>
+            <SectionLabel collapsed={collapsed} className="mt-4">Account</SectionLabel>
+            {privateLinks.map((l) => <Item key={l.to} {...l} collapsed={collapsed} />)}
+          </>
+        )}
+      </nav>
+
+      <div className="p-3 border-t border-sidebar-border space-y-2">
+        {user ? (
+          <button
+            onClick={logout}
+            className={cn(
+              "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-sidebar-foreground hover:bg-sidebar-accent transition-colors",
+              collapsed && "justify-center"
+            )}
+          >
+            <LogOut className="w-4 h-4 shrink-0" />
+            {!collapsed && "Logout"}
+          </button>
+        ) : (
+          <NavLink
+            to="/login"
+            className={cn(
+              "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium bg-gradient-primary text-primary-foreground hover:opacity-90 transition-opacity shadow-soft",
+              collapsed && "justify-center"
+            )}
+          >
+            <LogIn className="w-4 h-4 shrink-0" />
+            {!collapsed && "Login / Register"}
+          </NavLink>
+        )}
+        <button
+          onClick={() => setCollapsed(!collapsed)}
+          className={cn(
+            "w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs text-muted-foreground hover:bg-sidebar-accent transition-colors",
+            collapsed && "justify-center"
+          )}
+        >
+          {collapsed ? <ChevronRight className="w-4 h-4" /> : <><ChevronLeft className="w-4 h-4" /> Collapse</>}
+        </button>
+      </div>
+    </motion.aside>
+  );
+}
+
+function SectionLabel({ children, collapsed, className }: { children: React.ReactNode; collapsed: boolean; className?: string }) {
+  if (collapsed) return null;
+  return (
+    <div className={cn("px-3 pt-2 pb-1 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold", className)}>
+      {children}
+    </div>
+  );
+}
+
+function Item({ to, label, icon: Icon, collapsed }: { to: string; label: string; icon: any; collapsed: boolean }) {
+  return (
+    <NavLink
+      to={to}
+      end={to === "/"}
+      className={({ isActive }) =>
+        cn(
+          "group relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all",
+          isActive
+            ? "bg-sidebar-accent text-sidebar-accent-foreground"
+            : "text-sidebar-foreground hover:bg-sidebar-accent/60",
+          collapsed && "justify-center"
+        )
+      }
+    >
+      {({ isActive }) => (
+        <>
+          {isActive && (
+            <motion.span
+              layoutId="side-active"
+              className="absolute left-0 top-1.5 bottom-1.5 w-1 rounded-r-full bg-gradient-primary"
+            />
+          )}
+          <Icon className="w-4 h-4 shrink-0" />
+          {!collapsed && <span className="truncate">{label}</span>}
+        </>
+      )}
+    </NavLink>
+  );
+}
