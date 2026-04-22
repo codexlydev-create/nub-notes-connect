@@ -25,9 +25,15 @@ export interface User {
   studentId: string;
   avatar?: string;
   role?: "Contributor" | "Active Uploader";
+  emailVerified?: boolean;
 }
 
-export interface Contributor extends User {
+export interface Contributor {
+  id: string;
+  name: string;
+  email: string;
+  studentId: string;
+  role: "Contributor" | "Active Uploader";
   notesCount: number;
   views: number;
   likes: number;
