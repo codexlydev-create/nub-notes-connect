@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Eye, EyeOff, GraduationCap, Mail, Lock, User, IdCard, ArrowRight } from "lucide-react";
+import { Eye, EyeOff, GraduationCap, Mail, Lock, User, IdCard, ArrowRight, KeyRound } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 import { z } from "zod";
 
-type Mode = "login" | "register" | "forgot";
+type Mode = "login" | "register" | "forgot" | "verify";
 
 const registerSchema = z.object({
   name: z.string().trim().min(2, "Name too short").max(80),
@@ -18,11 +18,12 @@ const registerSchema = z.object({
 
 export default function Auth({ mode: initial = "login" as Mode }: { mode?: Mode }) {
   const [mode, setMode] = useState<Mode>(initial);
-  const { login, register, resetPassword } = useAuth();
+  const { login, beginRegister, completeRegister, resendOtp, resetPassword } = useAuth();
   const navigate = useNavigate();
   const [show, setShow] = useState(false);
-  const [form, setForm] = useState({ name: "", email: "", studentId: "", password: "", confirm: "" });
+  const [form, setForm] = useState({ name: "", email: "", studentId: "", password: "", confirm: "", otp: "" });
   const [loading, setLoading] = useState(false);
+  const [pendingEmail, setPendingEmail] = useState<string>("");
 
   const set = (k: keyof typeof form, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -37,8 +38,13 @@ export default function Auth({ mode: initial = "login" as Mode }: { mode?: Mode 
       } else if (mode === "register") {
         const parsed = registerSchema.safeParse(form);
         if (!parsed.success) { toast.error(parsed.error.errors[0].message); return; }
-        await register({ name: form.name, email: form.email, studentId: form.studentId, password: form.password });
-        toast.success("Account created!");
+        await beginRegister({ name: form.name, email: form.email, studentId: form.studentId, password: form.password });
+        setPendingEmail(form.email);
+        setMode("verify");
+      } else if (mode === "verify") {
+        if (!form.otp || form.otp.length < 4) { toast.error("Enter the 6-digit OTP"); return; }
+        await completeRegister(pendingEmail || form.email, form.otp);
+        toast.success("Email verified — welcome!");
         navigate("/dashboard");
       } else {
         if (!form.email || form.password.length < 6) { toast.error("Email + new password (min 6) required"); return; }
@@ -67,7 +73,10 @@ export default function Auth({ mode: initial = "login" as Mode }: { mode?: Mode 
             <div>
               <div className="font-bold text-lg">Note Share</div>
               <div className="text-xs text-muted-foreground">
-                {mode === "login" ? "Welcome back" : mode === "register" ? "Create your account" : "Reset your password"}
+                {mode === "login" ? "Welcome back"
+                  : mode === "register" ? "Create your account"
+                  : mode === "verify" ? "Verify your email"
+                  : "Reset your password"}
               </div>
             </div>
           </div>
@@ -82,10 +91,26 @@ export default function Auth({ mode: initial = "login" as Mode }: { mode?: Mode 
               )}
             </AnimatePresence>
 
-            <Input icon={Mail} type="email" placeholder="Email" value={form.email} onChange={(v) => set("email", v)} />
-            <Input icon={Lock} type={show ? "text" : "password"} placeholder={mode === "forgot" ? "New password" : "Password"} value={form.password} onChange={(v) => set("password", v)}
-              trailing={<button type="button" onClick={() => setShow((s) => !s)} className="text-muted-foreground hover:text-foreground">{show ? <EyeOff className="w-4 h-4"/> : <Eye className="w-4 h-4"/>}</button>}
-            />
+            {mode !== "verify" && (
+              <>
+                <Input icon={Mail} type="email" placeholder="Email" value={form.email} onChange={(v) => set("email", v)} />
+                <Input icon={Lock} type={show ? "text" : "password"} placeholder={mode === "forgot" ? "New password" : "Password"} value={form.password} onChange={(v) => set("password", v)}
+                  trailing={<button type="button" onClick={() => setShow((s) => !s)} className="text-muted-foreground hover:text-foreground">{show ? <EyeOff className="w-4 h-4"/> : <Eye className="w-4 h-4"/>}</button>}
+                />
+              </>
+            )}
+
+            {mode === "verify" && (
+              <>
+                <div className="text-xs text-muted-foreground text-center">
+                  We sent a 6-digit code to <span className="font-semibold text-foreground">{pendingEmail}</span>.
+                </div>
+                <Input icon={KeyRound} placeholder="Enter 6-digit OTP" value={form.otp} onChange={(v) => set("otp", v)} />
+                <div className="text-right">
+                  <button type="button" onClick={async () => { try { await resendOtp(pendingEmail); } catch (e: any) { toast.error(e?.message); } }} className="text-xs text-primary font-medium hover:underline">Resend code</button>
+                </div>
+              </>
+            )}
 
             <AnimatePresence>
               {mode === "register" && (
@@ -105,7 +130,11 @@ export default function Auth({ mode: initial = "login" as Mode }: { mode?: Mode 
               disabled={loading}
               className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gradient-primary text-primary-foreground font-semibold shadow-elegant hover:opacity-90 disabled:opacity-60 transition"
             >
-              {loading ? "Please wait…" : mode === "login" ? "Sign In" : mode === "register" ? "Create account" : "Reset password"}
+              {loading ? "Please wait…"
+                : mode === "login" ? "Sign In"
+                : mode === "register" ? "Send OTP"
+                : mode === "verify" ? "Verify & continue"
+                : "Reset password"}
               <ArrowRight className="w-4 h-4" />
             </button>
           </form>
@@ -113,6 +142,7 @@ export default function Auth({ mode: initial = "login" as Mode }: { mode?: Mode 
           <div className="mt-5 text-center text-sm text-muted-foreground">
             {mode === "login" && <>New here? <button className="text-primary font-semibold hover:underline" onClick={() => setMode("register")}>Create an account</button></>}
             {mode === "register" && <>Already have an account? <button className="text-primary font-semibold hover:underline" onClick={() => setMode("login")}>Sign in</button></>}
+            {mode === "verify" && <><button className="text-primary font-semibold hover:underline" onClick={() => setMode("register")}>← Use a different email</button></>}
             {mode === "forgot" && <><button className="text-primary font-semibold hover:underline" onClick={() => setMode("login")}>Back to sign in</button></>}
           </div>
         </motion.div>
