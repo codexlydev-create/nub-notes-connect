@@ -61,7 +61,7 @@ export default function Contributors() {
       </div>
 
       <div className="rounded-2xl bg-card border border-border shadow-card overflow-hidden">
-        <div className="hidden md:grid grid-cols-[60px_1fr_120px_100px_100px_80px] items-center gap-4 px-5 py-3 border-b border-border text-[11px] uppercase tracking-wider text-muted-foreground font-semibold bg-muted/30">
+        <div className="hidden md:grid grid-cols-[60px_1fr_90px_100px_90px_130px] items-center gap-4 px-5 py-3 border-b border-border text-[11px] uppercase tracking-wider text-muted-foreground font-semibold bg-muted/30">
           <div>Rank</div><div>Contributor</div><div>Notes</div><div>Views</div><div>Likes</div><div>Role</div>
         </div>
         {contributors.map((c, i) => (
@@ -70,7 +70,7 @@ export default function Contributors() {
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.03 }}
-            className="grid grid-cols-[60px_1fr] md:grid-cols-[60px_1fr_120px_100px_100px_80px] items-center gap-4 px-5 py-4 border-b border-border last:border-b-0 hover:bg-muted/30 transition-colors"
+            className="grid grid-cols-[60px_1fr] md:grid-cols-[60px_1fr_90px_100px_90px_130px] items-center gap-4 px-5 py-4 border-b border-border last:border-b-0 hover:bg-muted/30 transition-colors"
           >
             <div className="flex items-center">
               <RankBadge rank={c.rank} />
@@ -88,7 +88,7 @@ export default function Contributors() {
             <div className="hidden md:block text-sm">{c.views.toLocaleString()}</div>
             <div className="hidden md:block text-sm">{c.likes.toLocaleString()}</div>
             <div className="hidden md:block">
-              <span className={"text-[10px] font-semibold px-2 py-1 rounded-md " + (c.role === "Active Uploader" ? "bg-gradient-primary text-primary-foreground" : "bg-accent text-accent-foreground")}>{c.role}</span>
+              <span className={"inline-block whitespace-nowrap text-[10px] font-semibold px-2.5 py-1 rounded-md " + (c.role === "Active Uploader" ? "bg-gradient-primary text-primary-foreground" : "bg-accent text-accent-foreground")}>{c.role}</span>
             </div>
           </motion.div>
         ))}
