@@ -145,20 +145,16 @@ export default function NoteDetails() {
 
           {/* PDF VIEWER */}
           <div className="rounded-2xl bg-card border border-border shadow-card overflow-hidden">
-            <div className="flex flex-wrap items-center justify-between gap-2 p-3 border-b border-border bg-muted/30">
+            <div className="flex flex-wrap items-center gap-2 p-3 border-b border-border bg-muted/30">
               <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Preview {note.fileName ? <span className="ml-2 normal-case font-normal tracking-normal text-foreground/70">· {note.fileName}</span> : null}
               </div>
-              <div className="flex items-center gap-2">
-                <button onClick={openPdf} className="text-xs font-medium px-3 py-1.5 rounded-lg hover:bg-muted inline-flex items-center gap-1.5"><ExternalLink className="w-3.5 h-3.5" /> Open</button>
-                <button onClick={downloadPdf} className="text-xs font-medium px-3 py-1.5 rounded-lg hover:bg-muted inline-flex items-center gap-1.5"><Download className="w-3.5 h-3.5" /> Download</button>
-              </div>
             </div>
-            {fileSrc ? (
+            {viewerSrc ? (
               <iframe
                 title={note.title}
-                src={fileSrc}
-                className="w-full h-[720px] bg-muted/20"
+                src={viewerSrc}
+                className="w-full h-[820px] bg-muted/20"
               />
             ) : (
               <div className="h-[480px] flex flex-col items-center justify-center text-center p-6 bg-muted/20">
