@@ -1,7 +1,7 @@
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { ArrowLeft, Eye, Calendar, User as UserIcon, Download, ExternalLink, ZoomIn, ZoomOut, Maximize2, RefreshCcw, ThumbsUp, ThumbsDown, Bookmark, FileText } from "lucide-react";
+import { ArrowLeft, Eye, Calendar, User as UserIcon, Download, ExternalLink, ThumbsUp, ThumbsDown, Bookmark, FileText } from "lucide-react";
 import { notesApi, interactionsApi, viewsApi, anonViewerId } from "@/lib/store";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
@@ -11,7 +11,6 @@ export default function NoteDetails() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [tick, setTick] = useState(0);
-  const [zoom, setZoom] = useState(100);
 
   useEffect(() => {
     if (!id) return;
