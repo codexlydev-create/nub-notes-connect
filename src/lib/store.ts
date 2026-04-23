@@ -71,14 +71,27 @@ export const contributorsApi = {
         views: 0,
         likes: 0,
         rank: 0,
+        lastUploadAt: undefined as string | undefined,
+        status: "Inactive" as "Active" | "Inactive",
       };
       existing.notesCount += 1;
       existing.views += n.views;
       existing.likes += n.likes;
+      if (!existing.lastUploadAt || n.createdAt > existing.lastUploadAt) {
+        existing.lastUploadAt = n.createdAt;
+      }
       byId.set(n.uploadedById, existing);
     }
+    const FIFTEEN_DAYS = 15 * 24 * 60 * 60 * 1000;
+    const now = Date.now();
     const arr = Array.from(byId.values())
-      .map((c) => ({ ...c, role: (c.notesCount >= 10 ? "Active Uploader" : "Contributor") as Contributor["role"] }))
+      .map((c) => ({
+        ...c,
+        role: (c.notesCount >= 10 ? "Active Uploader" : "Contributor") as Contributor["role"],
+        status: (c.lastUploadAt && now - new Date(c.lastUploadAt).getTime() <= FIFTEEN_DAYS
+          ? "Active"
+          : "Inactive") as "Active" | "Inactive",
+      }))
       .sort((a, b) => b.notesCount - a.notesCount || b.likes - a.likes);
     arr.forEach((c, i) => (c.rank = i + 1));
     return arr;
@@ -127,9 +140,10 @@ export const authApi = {
     const i = users.findIndex((x) => x.id === id);
     if (i === -1) throw new Error("User not found");
     if (patch.email && patch.email !== users[i].email) {
-      if (users.some((u) => u.email === patch.email)) throw new Error("Email already in use");
-      users[i].email = patch.email;
-      users[i].emailVerified = false;
+      if (users.some((u) => u.email === patch.email || u.pendingEmail === patch.email))
+        throw new Error("Email already in use");
+      // Don't replace the live email yet — store as pending until verified.
+      users[i].pendingEmail = patch.email;
     }
     if (patch.name) users[i].name = patch.name;
     if (patch.studentId) users[i].studentId = patch.studentId;
@@ -150,6 +164,11 @@ export const authApi = {
     const users = read<(User & { password: string })[]>(K.users, []);
     const i = users.findIndex((x) => x.id === id);
     if (i === -1) throw new Error("User not found");
+    // If a pending email is being verified, promote it to the live email.
+    if (users[i].pendingEmail) {
+      users[i].email = users[i].pendingEmail!;
+      users[i].pendingEmail = undefined;
+    }
     users[i].emailVerified = true;
     write(K.users, users);
     const current = read<User | null>(K.session, null);

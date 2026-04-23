@@ -26,6 +26,8 @@ export interface User {
   avatar?: string;
   role?: "Contributor" | "Active Uploader";
   emailVerified?: boolean;
+  /** New email pending verification — user still logs in with `email`. */
+  pendingEmail?: string;
 }
 
 export interface Contributor {
@@ -38,4 +40,8 @@ export interface Contributor {
   views: number;
   likes: number;
   rank: number;
+  /** ISO date of most recent upload (or undefined). */
+  lastUploadAt?: string;
+  /** Active = uploaded in last 15 days. */
+  status: "Active" | "Inactive";
 }
