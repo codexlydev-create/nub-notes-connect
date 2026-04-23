@@ -15,6 +15,7 @@ export default function NoteCard({ note, onChange }: { note: Note; onChange?: ()
   const [disliked, setDisliked] = useState(user ? interactionsApi.isDisliked(user.id, note.id) : false);
   const [saved, setSaved] = useState(user ? interactionsApi.isSaved(user.id, note.id) : false);
   const [counts, setCounts] = useState({ likes: note.likes, dislikes: note.dislikes, saves: note.saves });
+  const isOwn = !!user && user.id === note.uploadedById;
 
   const requireAuth = () => {
     if (!user) {
@@ -27,6 +28,7 @@ export default function NoteCard({ note, onChange }: { note: Note; onChange?: ()
 
   const onLike = (e: React.MouseEvent) => {
     e.preventDefault(); e.stopPropagation();
+    if (isOwn) return;
     if (!requireAuth()) return;
     const now = interactionsApi.toggleLike(user!.id, note.id);
     setLiked(now);
@@ -35,6 +37,7 @@ export default function NoteCard({ note, onChange }: { note: Note; onChange?: ()
   };
   const onDislike = (e: React.MouseEvent) => {
     e.preventDefault(); e.stopPropagation();
+    if (isOwn) return;
     if (!requireAuth()) return;
     const now = interactionsApi.toggleDislike(user!.id, note.id);
     setDisliked(now);
@@ -43,6 +46,7 @@ export default function NoteCard({ note, onChange }: { note: Note; onChange?: ()
   };
   const onSave = (e: React.MouseEvent) => {
     e.preventDefault(); e.stopPropagation();
+    if (isOwn) return;
     if (!requireAuth()) return;
     const now = interactionsApi.toggleSave(user!.id, note.id);
     setSaved(now);
@@ -86,22 +90,28 @@ export default function NoteCard({ note, onChange }: { note: Note; onChange?: ()
         </div>
 
         <div className="flex items-center gap-1 pt-3 border-t border-border">
-          <Action onClick={onLike} active={liked} icon={ThumbsUp} count={counts.likes} />
-          <Action onClick={onDislike} active={disliked} icon={ThumbsDown} count={counts.dislikes} />
-          <Action onClick={onSave} active={saved} icon={Bookmark} count={counts.saves} activeClass="text-primary" />
+          <Action onClick={onLike} active={liked} icon={ThumbsUp} count={counts.likes} disabled={isOwn} title={isOwn ? "You can't react to your own note" : undefined} />
+          <Action onClick={onDislike} active={disliked} icon={ThumbsDown} count={counts.dislikes} disabled={isOwn} title={isOwn ? "You can't react to your own note" : undefined} />
+          <Action onClick={onSave} active={saved} icon={Bookmark} count={counts.saves} activeClass="text-primary" disabled={isOwn} title={isOwn ? "You can't save your own note" : undefined} />
+          {isOwn && (
+            <span className="ml-auto text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Your upload</span>
+          )}
         </div>
       </Link>
     </motion.div>
   );
 }
 
-function Action({ onClick, active, icon: Icon, count, activeClass = "text-primary" }: any) {
+function Action({ onClick, active, icon: Icon, count, activeClass = "text-primary", disabled, title }: any) {
   return (
     <button
       onClick={onClick}
+      disabled={disabled}
+      title={title}
       className={cn(
         "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all hover:bg-muted",
-        active ? activeClass : "text-muted-foreground"
+        active ? activeClass : "text-muted-foreground",
+        disabled && "opacity-40 cursor-not-allowed hover:bg-transparent"
       )}
     >
       <Icon className={cn("w-3.5 h-3.5", active && "fill-current")} />
