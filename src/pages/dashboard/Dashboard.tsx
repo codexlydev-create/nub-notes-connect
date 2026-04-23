@@ -200,6 +200,10 @@ function UploadModal({ existing, onClose, onSaved, user }: any) {
     type: (existing?.type ?? "Slide") as "Slide" | "Hand Notes",
   });
   const [fileName, setFileName] = useState<string | null>(null);
+  const [fileData, setFileData] = useState<string | null>(null);
+  const [fileSize, setFileSize] = useState<number | null>(null);
+  const [pageCount, setPageCount] = useState<number | null>(null);
+  const [reading, setReading] = useState(false);
   const courses = deptChoice === "Others" ? [] : (COURSES_BY_DEPT[deptChoice] ?? []);
 
   const handleDeptChange = (v: string) => {
@@ -219,15 +223,70 @@ function UploadModal({ existing, onClose, onSaved, user }: any) {
     else setF((p) => ({ ...p, course: v }));
   };
 
+  const MAX_BYTES = 1024 * 1024; // 1MB
+
+  const countPdfPages = (bytes: Uint8Array): number => {
+    // Lightweight page-count extraction without extra deps.
+    // Decode as latin1 so byte values map 1:1 to chars.
+    let text = "";
+    const chunk = 65536;
+    for (let i = 0; i < bytes.length; i += chunk) {
+      text += String.fromCharCode.apply(null, Array.from(bytes.subarray(i, i + chunk)) as any);
+    }
+    // Prefer /N entry on linearized PDFs.
+    const linear = text.match(/\/N\s+(\d+)/);
+    if (linear) {
+      const n = parseInt(linear[1], 10);
+      if (n > 0 && n < 100000) return n;
+    }
+    // Fallback: count /Type /Page (not /Pages).
+    const matches = text.match(/\/Type\s*\/Page(?![s\/])/g);
+    return matches ? matches.length : 1;
+  };
+
+  const onFile = async (file: File | undefined) => {
+    if (!file) return;
+    if (file.type !== "application/pdf") { toast.error("PDF files only"); return; }
+    if (file.size > MAX_BYTES) {
+      toast.error("File too large", { description: "Max 1 MB when no database is connected." });
+      return;
+    }
+    setReading(true);
+    try {
+      const buf = await file.arrayBuffer();
+      const bytes = new Uint8Array(buf);
+      const pages = countPdfPages(bytes);
+      // Build data URL
+      let bin = "";
+      const chunk = 32768;
+      for (let i = 0; i < bytes.length; i += chunk) {
+        bin += String.fromCharCode.apply(null, Array.from(bytes.subarray(i, i + chunk)) as any);
+      }
+      const dataUrl = "data:application/pdf;base64," + btoa(bin);
+      setFileName(file.name);
+      setFileSize(file.size);
+      setFileData(dataUrl);
+      setPageCount(pages);
+    } catch (err) {
+      console.error(err);
+      toast.error("Could not read file");
+    } finally {
+      setReading(false);
+    }
+  };
+
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!f.title || !f.courseCode) { toast.error("Title and course code are required"); return; }
     if (!f.department.trim()) { toast.error("Department is required"); return; }
     if (!f.course.trim()) { toast.error("Course is required"); return; }
     if (!f.description.trim()) { toast.error("Description is required"); return; }
-    if (!existing && !fileName) { toast.error("PDF file is required"); return; }
+    if (!existing && !fileData) { toast.error("PDF file is required"); return; }
     if (existing) {
-      notesApi.update(existing.id, { ...f });
+      notesApi.update(existing.id, {
+        ...f,
+        ...(fileData ? { fileData, fileName: fileName ?? undefined, fileSize: fileSize ?? undefined, pageCount: pageCount ?? undefined } : {}),
+      });
       toast.success("Updated");
     } else {
       notesApi.create({
@@ -237,6 +296,10 @@ function UploadModal({ existing, onClose, onSaved, user }: any) {
         uploadedById: user.id,
         views: 0, likes: 0, dislikes: 0, saves: 0,
         createdAt: new Date().toISOString(),
+        fileData: fileData!,
+        fileName: fileName ?? undefined,
+        fileSize: fileSize ?? undefined,
+        pageCount: pageCount ?? undefined,
       });
       toast.success("Uploaded!");
     }
@@ -313,11 +376,23 @@ function UploadModal({ existing, onClose, onSaved, user }: any) {
           <F label="File (PDF)">
             <label className="flex items-center gap-3 p-4 rounded-xl border-2 border-dashed border-border hover:border-primary cursor-pointer transition-colors">
               <Upload className="w-5 h-5 text-muted-foreground" />
-              <div className="text-sm">
-                <div className="font-medium">{fileName ?? "Click to upload PDF"}</div>
-                <div className="text-xs text-muted-foreground">PDF only · demo only, metadata stored locally</div>
+              <div className="text-sm min-w-0 flex-1">
+                <div className="font-medium truncate">
+                  {reading ? "Reading…" : (fileName ?? (existing?.fileName ? `Current: ${existing.fileName}` : "Click to upload PDF"))}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  PDF only · max 1 MB (no database connected)
+                  {fileSize ? ` · ${(fileSize / 1024).toFixed(0)} KB` : ""}
+                  {pageCount ? ` · ${pageCount} pages` : ""}
+                </div>
               </div>
-              <input type="file" accept="application/pdf" required={!existing} className="hidden" onChange={(e) => setFileName(e.target.files?.[0]?.name ?? null)} />
+              <input
+                type="file"
+                accept="application/pdf"
+                required={!existing}
+                className="hidden"
+                onChange={(e) => onFile(e.target.files?.[0])}
+              />
             </label>
           </F>
           <div className="flex justify-end gap-2 pt-2">

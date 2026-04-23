@@ -16,6 +16,14 @@ export interface Note {
   saves: number;
   createdAt: string;
   fileUrl?: string;
+  /** Data URL of the uploaded PDF (used when no backend is connected). */
+  fileData?: string;
+  /** Original file name. */
+  fileName?: string;
+  /** File size in bytes. */
+  fileSize?: number;
+  /** Number of pages in the PDF. */
+  pageCount?: number;
 }
 
 export interface User {
