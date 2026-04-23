@@ -17,6 +17,7 @@ export default function Dashboard() {
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<Note | null>(null);
   const [page, setPage] = useState(1);
+  const [confirmDelete, setConfirmDelete] = useState<Note | null>(null);
 
   if (!user) {
     return (
@@ -95,7 +96,7 @@ export default function Dashboard() {
                   <button onClick={() => { setEditing(n); setShowModal(true); }} className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border border-border hover:bg-muted text-xs font-medium">
                     <Edit3 className="w-3.5 h-3.5" /> Edit
                   </button>
-                  <button onClick={() => { notesApi.remove(n.id); toast.success("Deleted"); refresh(); }} className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border border-destructive/30 text-destructive hover:bg-destructive/10 text-xs font-medium">
+                  <button onClick={() => setConfirmDelete(n)} className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border border-destructive/30 text-destructive hover:bg-destructive/10 text-xs font-medium">
                     <Trash2 className="w-3.5 h-3.5" /> Delete
                   </button>
                 </div>
@@ -122,6 +123,18 @@ export default function Dashboard() {
             user={user}
           />
         )}
+        {confirmDelete && (
+          <ConfirmDeleteModal
+            note={confirmDelete}
+            onCancel={() => setConfirmDelete(null)}
+            onConfirm={() => {
+              notesApi.remove(confirmDelete.id);
+              toast.success("Note deleted");
+              setConfirmDelete(null);
+              refresh();
+            }}
+          />
+        )}
       </AnimatePresence>
     </div>
   );
@@ -129,6 +142,43 @@ export default function Dashboard() {
 
 function Stat({ icon: Icon, v }: any) {
   return <div className="flex items-center gap-1"><Icon className="w-3 h-3" /> {v}</div>;
+}
+
+function ConfirmDeleteModal({ note, onCancel, onConfirm }: { note: Note; onCancel: () => void; onConfirm: () => void }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 bg-background/70 backdrop-blur-sm flex items-center justify-center p-4"
+      onClick={onCancel}
+    >
+      <motion.div
+        initial={{ scale: 0.95, y: 20, opacity: 0 }}
+        animate={{ scale: 1, y: 0, opacity: 1 }}
+        exit={{ scale: 0.95, y: 20, opacity: 0 }}
+        transition={{ type: "spring", damping: 24, stiffness: 280 }}
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-md rounded-3xl bg-card border border-border shadow-elegant p-6"
+        role="alertdialog"
+        aria-modal="true"
+      >
+        <div className="flex items-start gap-4">
+          <div className="w-11 h-11 rounded-2xl bg-destructive/15 text-destructive flex items-center justify-center shrink-0">
+            <Trash2 className="w-5 h-5" />
+          </div>
+          <div className="min-w-0">
+            <h3 className="text-lg font-bold mb-1">Delete this note?</h3>
+            <p className="text-sm text-muted-foreground">
+              <span className="font-medium text-foreground">"{note.title}"</span> will be permanently removed. This action can't be undone.
+            </p>
+          </div>
+        </div>
+        <div className="flex justify-end gap-2 mt-6">
+          <button onClick={onCancel} className="px-4 py-2.5 rounded-xl border border-border hover:bg-muted text-sm font-medium">Cancel</button>
+          <button onClick={onConfirm} className="px-5 py-2.5 rounded-xl bg-destructive text-destructive-foreground hover:opacity-90 text-sm font-semibold">Yes, delete</button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
 }
 
 function UploadModal({ existing, onClose, onSaved, user }: any) {

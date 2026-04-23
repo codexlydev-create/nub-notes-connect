@@ -61,8 +61,8 @@ export default function Contributors() {
       </div>
 
       <div className="rounded-2xl bg-card border border-border shadow-card overflow-hidden">
-        <div className="hidden md:grid grid-cols-[60px_1fr_90px_100px_90px_130px] items-center gap-4 px-5 py-3 border-b border-border text-[11px] uppercase tracking-wider text-muted-foreground font-semibold bg-muted/30">
-          <div>Rank</div><div>Contributor</div><div>Notes</div><div>Views</div><div>Likes</div><div>Role</div>
+        <div className="hidden md:grid grid-cols-[60px_1fr_80px_90px_80px_130px_130px] items-center gap-4 px-5 py-3 border-b border-border text-[11px] uppercase tracking-wider text-muted-foreground font-semibold bg-muted/30">
+          <div>Rank</div><div>Contributor</div><div>Notes</div><div>Views</div><div>Likes</div><div>Role</div><div>Uploading Status</div>
         </div>
         {contributors.map((c, i) => (
           <motion.div
@@ -70,7 +70,7 @@ export default function Contributors() {
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.03 }}
-            className="grid grid-cols-[60px_1fr] md:grid-cols-[60px_1fr_90px_100px_90px_130px] items-center gap-4 px-5 py-4 border-b border-border last:border-b-0 hover:bg-muted/30 transition-colors"
+            className="grid grid-cols-[48px_1fr_auto] md:grid-cols-[60px_1fr_80px_90px_80px_130px_130px] items-center gap-3 md:gap-4 px-4 md:px-5 py-4 border-b border-border last:border-b-0 hover:bg-muted/30 transition-colors"
           >
             <div className="flex items-center">
               <RankBadge rank={c.rank} />
@@ -82,6 +82,9 @@ export default function Contributors() {
               <div className="min-w-0">
                 <div className="font-semibold truncate">{c.name}</div>
                 <div className="text-xs text-muted-foreground truncate">{c.studentId}</div>
+                <div className="md:hidden mt-1 flex items-center gap-1.5 flex-wrap">
+                  <span className="text-[10px] text-muted-foreground">{c.notesCount} notes · {c.likes} likes</span>
+                </div>
               </div>
             </div>
             <div className="hidden md:block text-sm font-medium">{c.notesCount}</div>
@@ -90,11 +93,35 @@ export default function Contributors() {
             <div className="hidden md:block">
               <span className={"inline-block whitespace-nowrap text-[10px] font-semibold px-2.5 py-1 rounded-md " + (c.role === "Active Uploader" ? "bg-gradient-primary text-primary-foreground" : "bg-accent text-accent-foreground")}>{c.role}</span>
             </div>
+            <div className="md:hidden">
+              <StatusPill status={c.status} />
+            </div>
+            <div className="hidden md:block">
+              <StatusPill status={c.status} />
+            </div>
           </motion.div>
         ))}
         {contributors.length === 0 && <div className="p-10 text-center text-muted-foreground">No contributors found.</div>}
       </div>
     </div>
+  );
+}
+
+function StatusPill({ status }: { status: "Active" | "Inactive" }) {
+  const active = status === "Active";
+  return (
+    <span
+      className={
+        "inline-flex items-center gap-1.5 whitespace-nowrap text-[10px] font-semibold px-2.5 py-1 rounded-md " +
+        (active
+          ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+          : "bg-muted text-muted-foreground")
+      }
+      title={active ? "Uploaded in the last 15 days" : "No uploads in the last 15 days"}
+    >
+      <span className={"w-1.5 h-1.5 rounded-full " + (active ? "bg-emerald-500" : "bg-muted-foreground")} />
+      {status}
+    </span>
   );
 }
 
