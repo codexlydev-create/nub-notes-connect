@@ -108,6 +108,21 @@ export default function Profile() {
         <h2 className="text-lg font-bold mb-1">Account details</h2>
         <p className="text-sm text-muted-foreground mb-5">Update your personal information.</p>
 
+        {user.pendingEmail && (
+          <div className="mb-5 rounded-xl border border-yellow-500/30 bg-yellow-500/10 p-4 text-sm">
+            <div className="flex gap-3">
+              <ShieldAlert className="w-5 h-5 text-yellow-600 dark:text-yellow-400 shrink-0 mt-0.5" />
+              <div>
+                <div className="font-semibold text-foreground">Verify your new email</div>
+                <div className="text-muted-foreground mt-0.5">
+                  You requested to change your email to <span className="font-medium text-foreground">{user.pendingEmail}</span>. Until you verify it, you still have to log in with{" "}
+                  <span className="font-medium text-foreground">"{user.email}"</span>. The new address won't be saved to your account until verification is complete.
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         <form onSubmit={saveProfile} className="space-y-4">
           <LabeledInput icon={UserIcon} label="Full name" value={form.name} onChange={(v) => setForm({ ...form, name: v })} />
           <LabeledInput icon={IdCard} label="Student ID" value={form.studentId} onChange={(v) => setForm({ ...form, studentId: v })} />
@@ -128,16 +143,16 @@ export default function Profile() {
                   </span>
                 ) : (
                   <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-1 rounded-full bg-muted text-muted-foreground">
-                    Unverified
+                    {user.pendingEmail && form.email === user.pendingEmail ? "Pending" : "Unverified"}
                   </span>
                 )}
               </div>
             </div>
-            {!user.emailVerified && form.email === user.email && (
+            {(!user.emailVerified || user.pendingEmail) && (form.email === user.email || form.email === user.pendingEmail) && (
               <div className="mt-3 rounded-xl border border-border p-3 bg-muted/30">
                 {!otpSent ? (
                   <button type="button" onClick={sendOtp} className="text-sm font-medium text-primary hover:underline inline-flex items-center gap-2">
-                    <KeyRound className="w-4 h-4" /> Send verification code
+                    <KeyRound className="w-4 h-4" /> {user.pendingEmail ? `Send code to ${user.pendingEmail}` : "Send verification code"}
                   </button>
                 ) : (
                   <div className="flex flex-wrap items-center gap-2">
