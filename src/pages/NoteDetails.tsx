@@ -193,15 +193,22 @@ export default function NoteDetails() {
             )}
           </div>
 
-          <div className="rounded-2xl bg-card border border-border p-5 shadow-card">
-            <div className="text-xs uppercase tracking-widest text-muted-foreground font-semibold mb-3">Engagement</div>
-            <div className="grid grid-cols-3 gap-2">
-              <SideBtn active={liked} onClick={() => act(() => interactionsApi.toggleLike(user!.id, note.id))} icon={ThumbsUp} label="Like" count={note.likes} />
-              <SideBtn active={disliked} onClick={() => act(() => interactionsApi.toggleDislike(user!.id, note.id))} icon={ThumbsDown} label="Dislike" count={note.dislikes} />
-              <SideBtn active={saved} onClick={() => act(() => interactionsApi.toggleSave(user!.id, note.id))} icon={Bookmark} label="Save" count={note.saves} />
+          {isOwn ? (
+            <div className="rounded-2xl bg-card border border-border p-5 shadow-card">
+              <div className="text-xs uppercase tracking-widest text-muted-foreground font-semibold mb-2">Your upload</div>
+              <p className="text-xs text-muted-foreground">You can't like, dislike, or save your own note.</p>
             </div>
-            {!user && <div className="text-[11px] text-muted-foreground mt-3">Login required to like or save.</div>}
-          </div>
+          ) : (
+            <div className="rounded-2xl bg-card border border-border p-5 shadow-card">
+              <div className="text-xs uppercase tracking-widest text-muted-foreground font-semibold mb-3">Engagement</div>
+              <div className="grid grid-cols-3 gap-2">
+                <SideBtn active={liked} onClick={onLike} icon={ThumbsUp} label="Like" count={note.likes} role="radio" />
+                <SideBtn active={disliked} onClick={onDislike} icon={ThumbsDown} label="Dislike" count={note.dislikes} role="radio" />
+                <SideBtn active={saved} onClick={onSave} icon={Bookmark} label="Save" count={note.saves} />
+              </div>
+              {!user && <div className="text-[11px] text-muted-foreground mt-3">Login required to like or save.</div>}
+            </div>
+          )}
 
           <div className="rounded-2xl bg-gradient-hero border border-border p-5">
             <div className="text-sm font-semibold mb-1">Course</div>
@@ -216,9 +223,14 @@ export default function NoteDetails() {
 function Meta({ icon: Icon, children }: any) {
   return <span className="inline-flex items-center gap-1.5"><Icon className="w-3.5 h-3.5" /> {children}</span>;
 }
-function SideBtn({ active, onClick, icon: Icon, label, count }: any) {
+function SideBtn({ active, onClick, icon: Icon, label, count, role }: any) {
   return (
-    <button onClick={onClick} className={"flex flex-col items-center gap-1 p-2 rounded-xl border transition-all " + (active ? "border-primary bg-primary/10 text-primary" : "border-border hover:bg-muted text-muted-foreground")}>
+    <button
+      onClick={onClick}
+      role={role}
+      aria-checked={role === "radio" ? !!active : undefined}
+      className={"flex flex-col items-center gap-1 p-2 rounded-xl border transition-all " + (active ? "border-primary bg-primary/10 text-primary" : "border-border hover:bg-muted text-muted-foreground")}
+    >
       <Icon className={"w-4 h-4 " + (active ? "fill-current" : "")} />
       <span className="text-[10px] font-medium">{label}</span>
       <span className="text-xs font-bold tabular-nums">{count}</span>
