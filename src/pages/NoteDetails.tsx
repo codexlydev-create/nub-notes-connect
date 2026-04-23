@@ -119,21 +119,27 @@ export default function NoteDetails() {
           <div className="rounded-2xl bg-card border border-border p-5 shadow-card">
             <div className="text-xs uppercase tracking-widest text-muted-foreground font-semibold mb-3">Actions</div>
             <div className="space-y-2">
-              <a
-                href="#"
-                onClick={(e) => { e.preventDefault(); toast.info("Demo PDF — connect Mongo/storage to enable real files."); }}
-                className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gradient-primary text-primary-foreground font-semibold shadow-soft hover:opacity-90"
+              <button
+                onClick={openPdf}
+                disabled={!fileSrc}
+                className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gradient-primary text-primary-foreground font-semibold shadow-soft hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <ExternalLink className="w-4 h-4" /> Open PDF
-              </a>
-              <a
-                href="#"
-                onClick={(e) => { e.preventDefault(); toast.success("Download started (demo)"); }}
-                className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-card border border-border font-semibold hover:bg-muted"
+              </button>
+              <button
+                onClick={downloadPdf}
+                disabled={!fileSrc}
+                className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-card border border-border font-semibold hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Download className="w-4 h-4" /> Download PDF
-              </a>
+              </button>
             </div>
+            {pageCount > 0 && (
+              <div className="mt-3 text-[11px] text-muted-foreground text-center">
+                {pageCount} {pageCount === 1 ? "page" : "pages"}
+                {note.fileSize ? ` · ${(note.fileSize / 1024).toFixed(0)} KB` : ""}
+              </div>
+            )}
           </div>
 
           <div className="rounded-2xl bg-card border border-border p-5 shadow-card">
