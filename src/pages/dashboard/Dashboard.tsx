@@ -224,6 +224,8 @@ function UploadModal({ existing, onClose, onSaved, user }: any) {
     if (!f.title || !f.courseCode) { toast.error("Title and course code are required"); return; }
     if (!f.department.trim()) { toast.error("Department is required"); return; }
     if (!f.course.trim()) { toast.error("Course is required"); return; }
+    if (!f.description.trim()) { toast.error("Description is required"); return; }
+    if (!existing && !fileName) { toast.error("PDF file is required"); return; }
     if (existing) {
       notesApi.update(existing.id, { ...f });
       toast.success("Updated");
