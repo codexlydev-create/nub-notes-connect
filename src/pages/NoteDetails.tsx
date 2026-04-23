@@ -165,13 +165,6 @@ export default function NoteDetails() {
 function Meta({ icon: Icon, children }: any) {
   return <span className="inline-flex items-center gap-1.5"><Icon className="w-3.5 h-3.5" /> {children}</span>;
 }
-function ToolBtn({ onClick, icon: Icon, label }: any) {
-  return (
-    <button onClick={onClick} title={label} className="w-8 h-8 rounded-lg hover:bg-muted flex items-center justify-center transition-colors">
-      <Icon className="w-4 h-4" />
-    </button>
-  );
-}
 function SideBtn({ active, onClick, icon: Icon, label, count }: any) {
   return (
     <button onClick={onClick} className={"flex flex-col items-center gap-1 p-2 rounded-xl border transition-all " + (active ? "border-primary bg-primary/10 text-primary" : "border-border hover:bg-muted text-muted-foreground")}>
