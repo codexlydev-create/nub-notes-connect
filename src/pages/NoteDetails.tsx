@@ -83,7 +83,7 @@ export default function NoteDetails() {
             <div className="flex flex-wrap gap-4 text-sm text-muted-foreground mb-5">
               <Meta icon={UserIcon}>{note.uploadedBy}</Meta>
               <Meta icon={Eye}>{note.views} views</Meta>
-              <Meta icon={FileText}>{pageCount} pages</Meta>
+              {pageCount > 0 && <Meta icon={FileText}>{pageCount} {pageCount === 1 ? "page" : "pages"}</Meta>}
               <Meta icon={Calendar}>{new Date(note.createdAt).toLocaleDateString()}</Meta>
             </div>
             <p className="text-sm leading-relaxed text-foreground/80">{note.description}</p>
