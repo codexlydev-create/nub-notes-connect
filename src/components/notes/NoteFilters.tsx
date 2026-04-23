@@ -1,6 +1,8 @@
+import { useMemo } from "react";
 import { Search, RotateCcw } from "lucide-react";
 import { DEPARTMENTS, COURSES_BY_DEPT } from "@/data/seed";
 import type { NoteType } from "@/lib/types";
+import { notesApi } from "@/lib/store";
 
 export interface FilterState {
   department: string;
@@ -15,14 +17,29 @@ export const emptyFilters: FilterState = {
 };
 
 export default function NoteFilters({ value, onChange }: { value: FilterState; onChange: (v: FilterState) => void }) {
-  const courses = value.department ? COURSES_BY_DEPT[value.department] ?? [] : [];
+  // Merge curated departments with any custom ones uploaders have added.
+  const { allDepartments, coursesByDept } = useMemo(() => {
+    const notes = notesApi.list();
+    const deptSet = new Set<string>(DEPARTMENTS);
+    const cmap: Record<string, Set<string>> = {};
+    for (const d of DEPARTMENTS) cmap[d] = new Set(COURSES_BY_DEPT[d] ?? []);
+    for (const n of notes) {
+      if (n.department) deptSet.add(n.department);
+      if (!cmap[n.department]) cmap[n.department] = new Set();
+      if (n.course) cmap[n.department].add(n.course);
+    }
+    const out: Record<string, string[]> = {};
+    Object.keys(cmap).forEach((k) => (out[k] = Array.from(cmap[k]).sort()));
+    return { allDepartments: Array.from(deptSet).sort(), coursesByDept: out };
+  }, []);
+  const courses = value.department ? coursesByDept[value.department] ?? [] : [];
   const set = <K extends keyof FilterState>(k: K, v: FilterState[K]) =>
     onChange({ ...value, [k]: v });
 
   return (
     <div className="rounded-2xl bg-card border border-border shadow-card p-5 mb-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
-        <Select label="Department" value={value.department} onChange={(v) => onChange({ ...value, department: v, course: "" })} options={["", ...DEPARTMENTS]} />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+        <Select label="Department" value={value.department} onChange={(v) => onChange({ ...value, department: v, course: "" })} options={["", ...allDepartments]} />
         <Select label="Course" value={value.course} onChange={(v) => set("course", v)} options={["", ...courses]} disabled={!value.department} />
         <Field label="Course Title">
           <input
@@ -35,11 +52,11 @@ export default function NoteFilters({ value, onChange }: { value: FilterState; o
         <Select label="Type" value={value.type} onChange={(v) => set("type", v as NoteType | "")} options={["", "Slide", "Hand Notes"]} />
         <Field label="Course Code">
           <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground z-10" />
             <input
               value={value.courseCode}
               onChange={(e) => set("courseCode", e.target.value)}
-              className="input-style pl-10"
+              className="input-style pl-10 placeholder:pl-0"
               placeholder="CSE 2101"
             />
           </div>
