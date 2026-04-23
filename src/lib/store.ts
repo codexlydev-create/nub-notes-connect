@@ -206,6 +206,35 @@ export const interactionsApi = {
     write(K.notes, notes);
     return now;
   },
+  // Radio-style: turning like ON also turns dislike OFF (and vice versa).
+  setReaction: (userId: string, noteId: string, reaction: "like" | "dislike" | "none") => {
+    const likesMap = read<Record<string, string[]>>(K.likes, {});
+    const dislikesMap = read<Record<string, string[]>>(K.dislikes, {});
+    const wasLiked = (likesMap[userId] ?? []).includes(noteId);
+    const wasDisliked = (dislikesMap[userId] ?? []).includes(noteId);
+    const wantLike = reaction === "like";
+    const wantDislike = reaction === "dislike";
+    likesMap[userId] = (likesMap[userId] ?? []).filter((x) => x !== noteId);
+    dislikesMap[userId] = (dislikesMap[userId] ?? []).filter((x) => x !== noteId);
+    if (wantLike) likesMap[userId].push(noteId);
+    if (wantDislike) dislikesMap[userId].push(noteId);
+    write(K.likes, likesMap);
+    write(K.dislikes, dislikesMap);
+    const likeDelta = (wantLike ? 1 : 0) - (wasLiked ? 1 : 0);
+    const dislikeDelta = (wantDislike ? 1 : 0) - (wasDisliked ? 1 : 0);
+    if (likeDelta !== 0 || dislikeDelta !== 0) {
+      const notes = notesApi.list().map((n) =>
+        n.id === noteId
+          ? {
+              ...n,
+              likes: Math.max(0, n.likes + likeDelta),
+              dislikes: Math.max(0, n.dislikes + dislikeDelta),
+            }
+          : n
+      );
+      write(K.notes, notes);
+    }
+  },
   toggleSave: (userId: string, noteId: string) => {
     const now = toggleSet(K.saves, userId, noteId);
     const notes = notesApi.list().map((n) =>
