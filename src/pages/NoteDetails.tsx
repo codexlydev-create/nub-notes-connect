@@ -25,15 +25,33 @@ export default function NoteDetails() {
   }, [id, user?.id]);
 
   const note = useMemo(() => (id ? notesApi.get(id) : undefined), [id, tick]);
-  // Deterministic fake page count based on note id, so it's stable per note (demo only).
-  const pageCount = useMemo(() => {
-    if (!note) return 0;
-    let h = 0;
-    for (let i = 0; i < note.id.length; i++) h = (h * 31 + note.id.charCodeAt(i)) | 0;
-    return (Math.abs(h) % 40) + 8; // 8–47 pages
-  }, [note]);
 
   if (!note) return <div className="text-center py-20 text-muted-foreground">Note not found. <Link className="text-primary" to="/find">Back to notes</Link></div>;
+
+  const pageCount = note.pageCount ?? 0;
+  const fileSrc = note.fileData ?? note.fileUrl;
+  const downloadName = note.fileName ?? `${note.title}.pdf`;
+
+  const openPdf = () => {
+    if (!fileSrc) { toast.info("No PDF attached to this note."); return; }
+    const w = window.open();
+    if (w) {
+      w.document.write(`<title>${note.title}</title><iframe src="${fileSrc}" style="border:0;width:100%;height:100vh"></iframe>`);
+      w.document.close();
+    } else {
+      window.location.href = fileSrc;
+    }
+  };
+  const downloadPdf = () => {
+    if (!fileSrc) { toast.info("No PDF attached to this note."); return; }
+    const a = document.createElement("a");
+    a.href = fileSrc;
+    a.download = downloadName;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    toast.success("Download started");
+  };
 
   const liked = user ? interactionsApi.isLiked(user.id, note.id) : false;
   const disliked = user ? interactionsApi.isDisliked(user.id, note.id) : false;
