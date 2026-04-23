@@ -92,35 +92,27 @@ export default function NoteDetails() {
           {/* PDF VIEWER */}
           <div className="rounded-2xl bg-card border border-border shadow-card overflow-hidden">
             <div className="flex flex-wrap items-center justify-between gap-2 p-3 border-b border-border bg-muted/30">
-              <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Preview</div>
-              <div className="flex items-center gap-1">
-                <ToolBtn onClick={() => setZoom((z) => Math.max(50, z - 25))} icon={ZoomOut} label="Zoom out" />
-                <div className="px-2 text-xs font-medium tabular-nums w-12 text-center">{zoom}%</div>
-                <ToolBtn onClick={() => setZoom((z) => Math.min(200, z + 25))} icon={ZoomIn} label="Zoom in" />
-                <ToolBtn onClick={() => setZoom(100)} icon={RefreshCcw} label="Reset" />
-                <ToolBtn onClick={() => setZoom(125)} icon={Maximize2} label="Fit width" />
+              <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Preview {note.fileName ? <span className="ml-2 normal-case font-normal tracking-normal text-foreground/70">· {note.fileName}</span> : null}
+              </div>
+              <div className="flex items-center gap-2">
+                <button onClick={openPdf} className="text-xs font-medium px-3 py-1.5 rounded-lg hover:bg-muted inline-flex items-center gap-1.5"><ExternalLink className="w-3.5 h-3.5" /> Open</button>
+                <button onClick={downloadPdf} className="text-xs font-medium px-3 py-1.5 rounded-lg hover:bg-muted inline-flex items-center gap-1.5"><Download className="w-3.5 h-3.5" /> Download</button>
               </div>
             </div>
-            <div className="h-[560px] overflow-auto bg-muted/20 p-6 flex justify-center">
-              <div
-                style={{ width: `${zoom}%`, maxWidth: "900px" }}
-                className="shrink-0 bg-card shadow-elegant rounded-lg border border-border p-10 space-y-4 text-sm"
-              >
-                <div className="text-xs uppercase tracking-widest text-primary font-semibold">{note.courseCode} · {note.type}</div>
-                <h2 className="text-2xl font-bold">{note.title}</h2>
-                <p className="text-muted-foreground">{note.description}</p>
-                <div className="h-px bg-border my-4" />
-                {[1,2,3,4,5,6,7,8].map((i) => (
-                  <div key={i} className="space-y-2">
-                    <div className="h-3 bg-muted rounded w-1/3" />
-                    <div className="h-2 bg-muted rounded w-full" />
-                    <div className="h-2 bg-muted rounded w-5/6" />
-                    <div className="h-2 bg-muted rounded w-4/6" />
-                  </div>
-                ))}
-                <div className="text-center text-xs text-muted-foreground pt-6">— End of preview —</div>
+            {fileSrc ? (
+              <iframe
+                title={note.title}
+                src={fileSrc}
+                className="w-full h-[720px] bg-muted/20"
+              />
+            ) : (
+              <div className="h-[480px] flex flex-col items-center justify-center text-center p-6 bg-muted/20">
+                <FileText className="w-10 h-10 text-muted-foreground mb-3" />
+                <div className="font-semibold mb-1">No PDF attached</div>
+                <div className="text-sm text-muted-foreground">This note doesn't have a PDF file.</div>
               </div>
-            </div>
+            )}
           </div>
         </div>
 
