@@ -376,11 +376,23 @@ function UploadModal({ existing, onClose, onSaved, user }: any) {
           <F label="File (PDF)">
             <label className="flex items-center gap-3 p-4 rounded-xl border-2 border-dashed border-border hover:border-primary cursor-pointer transition-colors">
               <Upload className="w-5 h-5 text-muted-foreground" />
-              <div className="text-sm">
-                <div className="font-medium">{fileName ?? "Click to upload PDF"}</div>
-                <div className="text-xs text-muted-foreground">PDF only · demo only, metadata stored locally</div>
+              <div className="text-sm min-w-0 flex-1">
+                <div className="font-medium truncate">
+                  {reading ? "Reading…" : (fileName ?? (existing?.fileName ? `Current: ${existing.fileName}` : "Click to upload PDF"))}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  PDF only · max 1 MB (no database connected)
+                  {fileSize ? ` · ${(fileSize / 1024).toFixed(0)} KB` : ""}
+                  {pageCount ? ` · ${pageCount} pages` : ""}
+                </div>
               </div>
-              <input type="file" accept="application/pdf" required={!existing} className="hidden" onChange={(e) => setFileName(e.target.files?.[0]?.name ?? null)} />
+              <input
+                type="file"
+                accept="application/pdf"
+                required={!existing}
+                className="hidden"
+                onChange={(e) => onFile(e.target.files?.[0])}
+              />
             </label>
           </F>
           <div className="flex justify-end gap-2 pt-2">
