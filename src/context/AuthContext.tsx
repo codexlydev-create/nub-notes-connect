@@ -96,8 +96,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const map = JSON.parse(localStorage.getItem(EMAIL_OTP_KEY) ?? "{}");
     map[user.id] = { otp, expiresAt: Date.now() + 10 * 60_000 };
     localStorage.setItem(EMAIL_OTP_KEY, JSON.stringify(map));
-    toast.success(`Verification code sent to ${user.email}`, { description: `Demo code: ${otp}`, duration: 10000 });
-    console.info(`[Verify OTP] ${user.email}: ${otp}`);
+    const target = user.pendingEmail ?? user.email;
+    toast.success(`Verification code sent to ${target}`, { description: `Demo code: ${otp}`, duration: 10000 });
+    console.info(`[Verify OTP] ${target}: ${otp}`);
   };
   const confirmEmailVerification: AuthCtx["confirmEmailVerification"] = async (otp) => {
     if (!user) throw new Error("Not signed in");
