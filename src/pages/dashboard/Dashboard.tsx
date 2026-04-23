@@ -262,16 +262,17 @@ function UploadModal({ existing, onClose, onSaved, user }: any) {
           <button onClick={onClose} className="p-2 rounded-lg hover:bg-muted"><X className="w-4 h-4" /></button>
         </div>
         <form onSubmit={onSubmit} className="space-y-3">
-          <F label="Title"><input className="inp" value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} /></F>
+          <F label="Title"><input className="inp" required value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} /></F>
           <div className="grid grid-cols-2 gap-3">
             <F label="Department">
-              <select className="inp" value={deptChoice} onChange={(e) => handleDeptChange(e.target.value)}>
+              <select className="inp" required value={deptChoice} onChange={(e) => handleDeptChange(e.target.value)}>
                 {DEPARTMENTS.map((d) => <option key={d} value={d}>{d}</option>)}
                 <option value="Others">Others</option>
               </select>
               {deptChoice === "Others" && (
                 <input
                   className="inp mt-2"
+                  required
                   placeholder="Enter department name"
                   value={f.department}
                   onChange={(e) => setF({ ...f, department: e.target.value })}
@@ -281,6 +282,7 @@ function UploadModal({ existing, onClose, onSaved, user }: any) {
             <F label="Course">
               <select
                 className="inp"
+                required
                 value={courseChoice}
                 onChange={(e) => handleCourseChange(e.target.value)}
                 disabled={deptChoice !== "Others" && courses.length === 0}
@@ -291,6 +293,7 @@ function UploadModal({ existing, onClose, onSaved, user }: any) {
               {courseChoice === "Others" && (
                 <input
                   className="inp mt-2"
+                  required
                   placeholder="Enter course name"
                   value={f.course}
                   onChange={(e) => setF({ ...f, course: e.target.value })}
@@ -299,14 +302,14 @@ function UploadModal({ existing, onClose, onSaved, user }: any) {
             </F>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <F label="Course Code"><input className="inp" placeholder="CSE 2101" value={f.courseCode} onChange={(e) => setF({ ...f, courseCode: e.target.value })} /></F>
+            <F label="Course Code"><input className="inp" required placeholder="CSE 2101" value={f.courseCode} onChange={(e) => setF({ ...f, courseCode: e.target.value })} /></F>
             <F label="Type">
-              <select className="inp" value={f.type} onChange={(e) => setF({ ...f, type: e.target.value as any })}>
+              <select className="inp" required value={f.type} onChange={(e) => setF({ ...f, type: e.target.value as any })}>
                 <option>Slide</option><option>Hand Notes</option>
               </select>
             </F>
           </div>
-          <F label="Description"><textarea className="inp min-h-[90px]" value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} /></F>
+          <F label="Description"><textarea className="inp min-h-[90px]" required value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} /></F>
           <F label="File (PDF)">
             <label className="flex items-center gap-3 p-4 rounded-xl border-2 border-dashed border-border hover:border-primary cursor-pointer transition-colors">
               <Upload className="w-5 h-5 text-muted-foreground" />
@@ -314,7 +317,7 @@ function UploadModal({ existing, onClose, onSaved, user }: any) {
                 <div className="font-medium">{fileName ?? "Click to upload PDF"}</div>
                 <div className="text-xs text-muted-foreground">PDF only · demo only, metadata stored locally</div>
               </div>
-              <input type="file" accept="application/pdf" className="hidden" onChange={(e) => setFileName(e.target.files?.[0]?.name ?? null)} />
+              <input type="file" accept="application/pdf" required={!existing} className="hidden" onChange={(e) => setFileName(e.target.files?.[0]?.name ?? null)} />
             </label>
           </F>
           <div className="flex justify-end gap-2 pt-2">
