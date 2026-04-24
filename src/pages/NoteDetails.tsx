@@ -1,4 +1,4 @@
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, Link, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { ArrowLeft, Eye, Calendar, User as UserIcon, Download, ExternalLink, ThumbsUp, ThumbsDown, Bookmark, FileText } from "lucide-react";
@@ -8,6 +8,7 @@ import { toast } from "sonner";
 
 export default function NoteDetails() {
   const { id } = useParams();
+  const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
   const [tick, setTick] = useState(0);
@@ -120,10 +121,8 @@ export default function NoteDetails() {
     <div>
       <button
         onClick={() => {
-          // Use history back when possible, otherwise fall back to the
-          // listing page so the user is never stranded on a blank state.
-          if (window.history.length > 1) navigate(-1);
-          else navigate("/find");
+          const from = typeof location.state?.from === "string" ? location.state.from : "/find";
+          navigate(from);
         }}
         className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-6"
       >
