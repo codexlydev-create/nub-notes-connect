@@ -54,18 +54,15 @@ export default function AppLayout() {
           </button>
         </div>
         <main className="flex-1 overflow-x-hidden">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={loc.pathname}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.25, ease: "easeOut" }}
-              className="px-4 md:px-8 py-6 md:py-10 max-w-7xl mx-auto w-full"
-            >
-              <Outlet />
-            </motion.div>
-          </AnimatePresence>
+          <motion.div
+            key={loc.pathname}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.25, ease: "easeOut" }}
+            className="px-4 md:px-8 py-6 md:py-10 max-w-7xl mx-auto w-full"
+          >
+            <Outlet />
+          </motion.div>
         </main>
       </div>
     </div>
