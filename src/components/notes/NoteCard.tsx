@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { Eye, ThumbsUp, ThumbsDown, Bookmark, FileText, Presentation } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { interactionsApi } from "@/lib/store";
 import { toast } from "sonner";
@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 export default function NoteCard({ note, onChange }: { note: Note; onChange?: () => void }) {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [liked, setLiked] = useState(user ? interactionsApi.isLiked(user.id, note.id) : false);
   const [disliked, setDisliked] = useState(user ? interactionsApi.isDisliked(user.id, note.id) : false);
   const [saved, setSaved] = useState(user ? interactionsApi.isSaved(user.id, note.id) : false);
@@ -65,6 +66,7 @@ export default function NoteCard({ note, onChange }: { note: Note; onChange?: ()
     >
       <Link
         to={`/notes/${note.id}`}
+        state={{ from: `${location.pathname}${location.search}${location.hash}` }}
         className="block group relative rounded-2xl bg-card border border-border p-5 shadow-card hover:shadow-elegant transition-all overflow-hidden"
       >
         <div className="absolute -top-20 -right-20 w-40 h-40 rounded-full bg-gradient-primary opacity-0 group-hover:opacity-10 blur-3xl transition-opacity" />
