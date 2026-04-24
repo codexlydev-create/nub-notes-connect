@@ -56,7 +56,8 @@ export default function NoteFilters({ value, onChange }: { value: FilterState; o
             <input
               value={value.courseCode}
               onChange={(e) => set("courseCode", e.target.value)}
-              className="input-style pl-10 placeholder:pl-0"
+              className="input-style"
+              style={{ paddingLeft: "2.25rem" }}
               placeholder="CSE 2101"
             />
           </div>
