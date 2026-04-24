@@ -118,7 +118,15 @@ export default function NoteDetails() {
 
   return (
     <div>
-      <button onClick={() => navigate(-1)} className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-6">
+      <button
+        onClick={() => {
+          // Use history back when possible, otherwise fall back to the
+          // listing page so the user is never stranded on a blank state.
+          if (window.history.length > 1) navigate(-1);
+          else navigate("/find");
+        }}
+        className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-6"
+      >
         <ArrowLeft className="w-4 h-4" /> Back
       </button>
 
