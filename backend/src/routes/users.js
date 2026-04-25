@@ -39,6 +39,7 @@ router.patch("/me", requireAuth, async (req, res, next) => {
   try {
     const schema = z.object({
       name: z.string().min(2).max(80).optional(),
+      studentId: z.string().min(2).max(40).optional(),
       department: z.string().max(100).optional(),
       bio: z.string().max(500).optional(),
       avatarUrl: z.string().url().max(500).optional().or(z.literal("")),

@@ -12,7 +12,7 @@ router.post("/", limiter, async (req, res, next) => {
     const schema = z.object({
       name: z.string().min(1).max(120),
       email: z.string().email(),
-      subject: z.string().min(1).max(200),
+      subject: z.string().min(1).max(200).optional().default("Contact form message"),
       message: z.string().min(1).max(5000),
     });
     const { name, email, subject, message } = schema.parse(req.body);

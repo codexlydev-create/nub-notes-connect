@@ -119,9 +119,10 @@ router.post("/signup", async (req, res, next) => {
       name: z.string().min(2).max(80),
       email: z.string().email(),
       password: z.string().min(6).max(100),
+      studentId: z.string().min(2).max(40).optional().default(""),
       otpToken: z.string().min(10),
     });
-    const { name, email, password, otpToken } = schema.parse(req.body);
+    const { name, email, password, studentId, otpToken } = schema.parse(req.body);
     const lower = email.toLowerCase();
     if (!consumeOtpToken(otpToken, lower, "signup"))
       return res.status(400).json({ error: "OTP not verified or expired" });
@@ -129,7 +130,7 @@ router.post("/signup", async (req, res, next) => {
       return res.status(409).json({ error: "Account already exists" });
 
     const passwordHash = await bcrypt.hash(password, 12);
-    const user = await User.create({ name, email: lower, passwordHash, emailVerified: true });
+    const user = await User.create({ name, email: lower, passwordHash, studentId, emailVerified: true });
     const token = signToken(user);
     res.json({ ok: true, token, user: user.toPublic() });
   } catch (e) { next(e); }
