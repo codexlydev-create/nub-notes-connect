@@ -2,7 +2,6 @@ import { useMemo } from "react";
 import { Search, RotateCcw } from "lucide-react";
 import { DEPARTMENTS, COURSES_BY_DEPT } from "@/data/seed";
 import type { NoteType } from "@/lib/types";
-import { notesApi } from "@/lib/store";
 
 export interface FilterState {
   department: string;
@@ -17,22 +16,8 @@ export const emptyFilters: FilterState = {
 };
 
 export default function NoteFilters({ value, onChange }: { value: FilterState; onChange: (v: FilterState) => void }) {
-  // Merge curated departments with any custom ones uploaders have added.
-  const { allDepartments, coursesByDept } = useMemo(() => {
-    const notes = notesApi.list();
-    const deptSet = new Set<string>(DEPARTMENTS);
-    const cmap: Record<string, Set<string>> = {};
-    for (const d of DEPARTMENTS) cmap[d] = new Set(COURSES_BY_DEPT[d] ?? []);
-    for (const n of notes) {
-      if (n.department) deptSet.add(n.department);
-      if (!cmap[n.department]) cmap[n.department] = new Set();
-      if (n.course) cmap[n.department].add(n.course);
-    }
-    const out: Record<string, string[]> = {};
-    Object.keys(cmap).forEach((k) => (out[k] = Array.from(cmap[k]).sort()));
-    return { allDepartments: Array.from(deptSet).sort(), coursesByDept: out };
-  }, []);
-  const courses = value.department ? coursesByDept[value.department] ?? [] : [];
+  const allDepartments = useMemo(() => [...DEPARTMENTS].sort(), []);
+  const courses = value.department ? COURSES_BY_DEPT[value.department] ?? [] : [];
   const set = <K extends keyof FilterState>(k: K, v: FilterState[K]) =>
     onChange({ ...value, [k]: v });
 
