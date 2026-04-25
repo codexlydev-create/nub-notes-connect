@@ -1,21 +1,30 @@
 import { motion } from "framer-motion";
-import { Eye, ThumbsUp, ThumbsDown, Bookmark, FileText, Presentation } from "lucide-react";
+import { Eye, ThumbsUp, ThumbsDown, Bookmark, FileText, Presentation, Loader2 } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
-import { interactionsApi } from "@/lib/store";
+import { notesApi } from "@/lib/notesApi";
 import { toast } from "sonner";
 import { useState } from "react";
 import type { Note } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-export default function NoteCard({ note, onChange }: { note: Note; onChange?: () => void }) {
+type Reactions = { liked: boolean; disliked: boolean; saved: boolean };
+
+export default function NoteCard({
+  note,
+  initialReactions,
+  onChange,
+}: {
+  note: Note;
+  initialReactions?: Reactions;
+  onChange?: (note: Note, me: Reactions) => void;
+}) {
   const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [liked, setLiked] = useState(user ? interactionsApi.isLiked(user.id, note.id) : false);
-  const [disliked, setDisliked] = useState(user ? interactionsApi.isDisliked(user.id, note.id) : false);
-  const [saved, setSaved] = useState(user ? interactionsApi.isSaved(user.id, note.id) : false);
+  const [me, setMe] = useState<Reactions>(initialReactions ?? { liked: false, disliked: false, saved: false });
   const [counts, setCounts] = useState({ likes: note.likes, dislikes: note.dislikes, saves: note.saves });
+  const [busy, setBusy] = useState<null | "like" | "dislike" | "save">(null);
   const isOwn = !!user && user.id === note.uploadedById;
 
   const requireAuth = () => {
@@ -27,34 +36,23 @@ export default function NoteCard({ note, onChange }: { note: Note; onChange?: ()
     return true;
   };
 
-  const onLike = (e: React.MouseEvent) => {
+  async function react(kind: "like" | "dislike" | "save", e: React.MouseEvent) {
     e.preventDefault(); e.stopPropagation();
-    if (isOwn) return;
+    if (isOwn || busy) return;
     if (!requireAuth()) return;
-    const now = interactionsApi.toggleLike(user!.id, note.id);
-    setLiked(now);
-    setCounts((c) => ({ ...c, likes: c.likes + (now ? 1 : -1) }));
-    onChange?.();
-  };
-  const onDislike = (e: React.MouseEvent) => {
-    e.preventDefault(); e.stopPropagation();
-    if (isOwn) return;
-    if (!requireAuth()) return;
-    const now = interactionsApi.toggleDislike(user!.id, note.id);
-    setDisliked(now);
-    setCounts((c) => ({ ...c, dislikes: c.dislikes + (now ? 1 : -1) }));
-    onChange?.();
-  };
-  const onSave = (e: React.MouseEvent) => {
-    e.preventDefault(); e.stopPropagation();
-    if (isOwn) return;
-    if (!requireAuth()) return;
-    const now = interactionsApi.toggleSave(user!.id, note.id);
-    setSaved(now);
-    setCounts((c) => ({ ...c, saves: c.saves + (now ? 1 : -1) }));
-    toast.success(now ? "Saved to your collection" : "Removed from saved");
-    onChange?.();
-  };
+    setBusy(kind);
+    try {
+      const r = await notesApi[kind](note.id);
+      setMe(r.me);
+      setCounts({ likes: r.note.likes, dislikes: r.note.dislikes, saves: r.note.saves });
+      onChange?.(r.note, r.me);
+      if (kind === "save") toast.success(r.me.saved ? "Saved to your collection" : "Removed from saved");
+    } catch (err: any) {
+      toast.error(err?.message ?? "Action failed");
+    } finally {
+      setBusy(null);
+    }
+  }
 
   const TypeIcon = note.type === "Slide" ? Presentation : FileText;
 
@@ -88,13 +86,13 @@ export default function NoteCard({ note, onChange }: { note: Note; onChange?: ()
 
         <div className="flex items-center justify-between text-[11px] text-muted-foreground mb-3">
           <span className="truncate">by {note.uploadedBy}</span>
-          <span className="flex items-center gap-1"><Eye className="w-3 h-3" /> {counts.likes + note.views}</span>
+          <span className="flex items-center gap-1"><Eye className="w-3 h-3" /> {note.views}</span>
         </div>
 
         <div className="flex items-center gap-1 pt-3 border-t border-border">
-          <Action onClick={onLike} active={liked} icon={ThumbsUp} count={counts.likes} disabled={isOwn} title={isOwn ? "You can't react to your own note" : undefined} />
-          <Action onClick={onDislike} active={disliked} icon={ThumbsDown} count={counts.dislikes} disabled={isOwn} title={isOwn ? "You can't react to your own note" : undefined} />
-          <Action onClick={onSave} active={saved} icon={Bookmark} count={counts.saves} activeClass="text-primary" disabled={isOwn} title={isOwn ? "You can't save your own note" : undefined} />
+          <Action onClick={(e) => react("like", e)} active={me.liked} loading={busy === "like"} icon={ThumbsUp} count={counts.likes} disabled={isOwn} title={isOwn ? "You can't react to your own note" : undefined} />
+          <Action onClick={(e) => react("dislike", e)} active={me.disliked} loading={busy === "dislike"} icon={ThumbsDown} count={counts.dislikes} disabled={isOwn} title={isOwn ? "You can't react to your own note" : undefined} />
+          <Action onClick={(e) => react("save", e)} active={me.saved} loading={busy === "save"} icon={Bookmark} count={counts.saves} disabled={isOwn} title={isOwn ? "You can't save your own note" : undefined} />
           {isOwn && (
             <span className="ml-auto text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Your upload</span>
           )}
@@ -104,19 +102,26 @@ export default function NoteCard({ note, onChange }: { note: Note; onChange?: ()
   );
 }
 
-function Action({ onClick, active, icon: Icon, count, activeClass = "text-primary", disabled, title }: any) {
+function Action({
+  onClick, active, loading, icon: Icon, count, disabled, title,
+}: {
+  onClick: (e: React.MouseEvent) => void;
+  active: boolean; loading: boolean;
+  icon: any; count: number;
+  disabled?: boolean; title?: string;
+}) {
   return (
     <button
       onClick={onClick}
-      disabled={disabled}
+      disabled={disabled || loading}
       title={title}
       className={cn(
         "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all hover:bg-muted",
-        active ? activeClass : "text-muted-foreground",
-        disabled && "opacity-40 cursor-not-allowed hover:bg-transparent"
+        active ? "text-primary" : "text-muted-foreground",
+        (disabled || loading) && "opacity-50 cursor-not-allowed hover:bg-transparent"
       )}
     >
-      <Icon className={cn("w-3.5 h-3.5", active && "fill-current")} />
+      {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className={cn("w-3.5 h-3.5", active && "fill-current")} />}
       {count}
     </button>
   );
