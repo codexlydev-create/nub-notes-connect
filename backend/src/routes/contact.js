@@ -16,7 +16,7 @@ router.post("/", limiter, async (req, res, next) => {
       message: z.string().min(1).max(5000),
     });
     const { name, email, subject, message } = schema.parse(req.body);
-    const inbox = process.env.CONTACT_INBOX || process.env.GMAIL_USER;
+    const inbox = process.env.CONTACT_INBOX || process.env.EMAIL_USER;
 
     await sendMail({
       to: inbox,
