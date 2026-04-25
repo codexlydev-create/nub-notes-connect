@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
-import { themeKey } from "@/lib/store";
+
+const themeKey = "ns_theme";
 
 type Theme = "light" | "dark";
 const Ctx = createContext<{ theme: Theme; toggle: () => void } | null>(null);

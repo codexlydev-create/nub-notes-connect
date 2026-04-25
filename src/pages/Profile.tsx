@@ -6,9 +6,10 @@ import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 
 export default function Profile() {
-  const { user, updateProfile, changePassword, sendEmailVerification, confirmEmailVerification } = useAuth();
+  const { user, updateProfile, changePassword, requestEmailChange, confirmEmailChange } = useAuth();
   const navigate = useNavigate();
   const [form, setForm] = useState({ name: "", email: "", studentId: "" });
+  const [emailSaving, setEmailSaving] = useState(false);
   const [saving, setSaving] = useState(false);
   const [otp, setOtp] = useState("");
   const [otpSent, setOtpSent] = useState(false);
@@ -27,19 +28,30 @@ export default function Profile() {
     e.preventDefault();
     setSaving(true);
     try {
-      await updateProfile(form);
-      toast.success("Profile updated");
+      await updateProfile({ name: form.name, studentId: form.studentId });
+      // If email changed, trigger an email-change verification flow.
+      if (user && form.email && form.email !== user.email) {
+        setEmailSaving(true);
+        await requestEmailChange(form.email);
+        toast.success(`Verification code sent to ${form.email}`);
+        setOtpSent(true);
+      } else {
+        toast.success("Profile updated");
+      }
     } catch (err: any) {
       toast.error(err?.message ?? "Could not update profile");
     } finally {
       setSaving(false);
+      setEmailSaving(false);
     }
   };
 
   const sendOtp = async () => {
     try {
-      await sendEmailVerification();
+      if (!user?.pendingEmail) { toast.error("Save a new email first"); return; }
+      await requestEmailChange(user.pendingEmail);
       setOtpSent(true);
+      toast.success(`Code sent to ${user.pendingEmail}`);
     } catch (err: any) {
       toast.error(err?.message ?? "Could not send code");
     }
@@ -47,7 +59,7 @@ export default function Profile() {
 
   const confirmOtp = async () => {
     try {
-      await confirmEmailVerification(otp);
+      await confirmEmailChange(otp);
       toast.success("Email verified");
       setOtp(""); setOtpSent(false);
     } catch (err: any) {

@@ -4,10 +4,10 @@ let cachedTransport = null;
 
 export function getTransport() {
   if (cachedTransport) return cachedTransport;
-  const user = process.env.GMAIL_USER;
-  const pass = process.env.GMAIL_APP_PASSWORD;
+  const user = process.env.EMAIL_USER;
+  const pass = process.env.EMAIL_APP_PASSWORD;
   if (!user || !pass) {
-    throw new Error("GMAIL_USER and GMAIL_APP_PASSWORD must be set in .env");
+    throw new Error("EMAIL_USER and EMAIL_APP_PASSWORD must be set in backend/.env");
   }
   cachedTransport = nodemailer.createTransport({
     service: "gmail",
@@ -18,7 +18,7 @@ export function getTransport() {
 
 export async function sendMail({ to, subject, html, text, replyTo }) {
   const transport = getTransport();
-  const from = `NoteShare <${process.env.GMAIL_USER}>`;
+  const from = `NoteShare <${process.env.EMAIL_USER}>`;
   return transport.sendMail({ from, to, subject, html, text, replyTo });
 }
 

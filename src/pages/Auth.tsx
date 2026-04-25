@@ -18,7 +18,7 @@ const registerSchema = z.object({
 
 export default function Auth({ mode: initial = "login" as Mode }: { mode?: Mode }) {
   const [mode, setMode] = useState<Mode>(initial);
-  const { login, beginRegister, completeRegister, resendOtp, resetPassword } = useAuth();
+  const { login, beginRegister, completeRegister, resendOtp, sendResetOtp, resetPassword } = useAuth();
   const navigate = useNavigate();
   const [show, setShow] = useState(false);
   const [form, setForm] = useState({ name: "", email: "", studentId: "", password: "", confirm: "", otp: "" });
@@ -40,15 +40,23 @@ export default function Auth({ mode: initial = "login" as Mode }: { mode?: Mode 
         if (!parsed.success) { toast.error(parsed.error.errors[0].message); return; }
         await beginRegister({ name: form.name, email: form.email, studentId: form.studentId, password: form.password });
         setPendingEmail(form.email);
+        toast.success(`OTP sent to ${form.email}`);
         setMode("verify");
       } else if (mode === "verify") {
         if (!form.otp || form.otp.length < 4) { toast.error("Enter the 6-digit OTP"); return; }
-        await completeRegister(pendingEmail || form.email, form.otp);
+        await completeRegister({
+          name: form.name, email: pendingEmail || form.email,
+          studentId: form.studentId, password: form.password, otp: form.otp,
+        });
         toast.success("Email verified — welcome!");
         navigate("/dashboard");
       } else {
-        if (!form.email || form.password.length < 6) { toast.error("Email + new password (min 6) required"); return; }
-        await resetPassword(form.email, form.password);
+        // forgot: requires email + otp + new password
+        if (!form.email || form.password.length < 6 || form.otp.length !== 6) {
+          toast.error("Email, 6-digit OTP and new password (min 6 chars) required");
+          return;
+        }
+        await resetPassword(form.email, form.otp, form.password);
         toast.success("Password reset. You can now sign in.");
         setMode("login");
       }
@@ -123,6 +131,17 @@ export default function Auth({ mode: initial = "login" as Mode }: { mode?: Mode 
             {mode === "login" && (
               <div className="text-right">
                 <button type="button" onClick={() => setMode("forgot")} className="text-xs text-primary font-medium hover:underline">Forgot password?</button>
+              </div>
+            )}
+
+            {mode === "forgot" && (
+              <div className="space-y-3">
+                <Input icon={KeyRound} placeholder="6-digit code from your email" value={form.otp} onChange={(v) => set("otp", v)} />
+                <button
+                  type="button"
+                  onClick={async () => { try { await sendResetOtp(form.email); toast.success(`Reset code sent to ${form.email}`); } catch (e: any) { toast.error(e?.message ?? "Could not send code"); } }}
+                  className="text-xs text-primary font-medium hover:underline"
+                >Send / resend reset code</button>
               </div>
             )}
 
