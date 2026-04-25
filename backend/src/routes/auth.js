@@ -175,4 +175,75 @@ router.get("/me", requireAuth, (req, res) => {
   res.json({ user: req.user.toPublic() });
 });
 
+/* -------- change password (authed) -------- */
+router.post("/change-password", requireAuth, async (req, res, next) => {
+  try {
+    const schema = z.object({
+      currentPassword: z.string().min(1),
+      newPassword: z.string().min(6).max(100),
+    });
+    const { currentPassword, newPassword } = schema.parse(req.body);
+    const ok = await bcrypt.compare(currentPassword, req.user.passwordHash);
+    if (!ok) return res.status(400).json({ error: "Current password is incorrect" });
+    req.user.passwordHash = await bcrypt.hash(newPassword, 12);
+    await req.user.save();
+    res.json({ ok: true });
+  } catch (e) { next(e); }
+});
+
+/* -------- request email change (authed): sends OTP to new email -------- */
+router.post("/request-email-change", requireAuth, async (req, res, next) => {
+  try {
+    const schema = z.object({ newEmail: z.string().email() });
+    const { newEmail } = schema.parse(req.body);
+    const lower = newEmail.toLowerCase();
+    if (lower === req.user.email) return res.status(400).json({ error: "That's already your email" });
+    const taken = await User.findOne({ email: lower });
+    if (taken) return res.status(409).json({ error: "Email already in use" });
+
+    const code = genCode();
+    await Otp.deleteMany({ email: lower, purpose: "signup", consumed: false });
+    await Otp.create({
+      email: lower,
+      purpose: "signup",
+      codeHash: hashCode(code),
+      expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+    });
+    req.user.pendingEmail = lower;
+    await req.user.save();
+
+    await sendMail({
+      to: lower,
+      subject: `Verify your new NoteShare email: ${code}`,
+      html: otpEmailHtml({ code, purpose: "signup" }),
+      text: `Your NoteShare verification code is ${code}. It expires in 10 minutes.`,
+    });
+    res.json({ ok: true, user: req.user.toPublic() });
+  } catch (e) { next(e); }
+});
+
+/* -------- confirm email change (authed) -------- */
+router.post("/confirm-email-change", requireAuth, async (req, res, next) => {
+  try {
+    const schema = z.object({ code: z.string().length(6) });
+    const { code } = schema.parse(req.body);
+    const pending = req.user.pendingEmail;
+    if (!pending) return res.status(400).json({ error: "No pending email change" });
+    const otp = await Otp.findOne({ email: pending, purpose: "signup", consumed: false }).sort({ createdAt: -1 });
+    if (!otp) return res.status(400).json({ error: "No code requested or it has expired" });
+    if (otp.expiresAt < new Date()) return res.status(400).json({ error: "Code expired, request a new one" });
+    if (otp.attempts >= 5) return res.status(429).json({ error: "Too many attempts, request a new code" });
+    if (otp.codeHash !== hashCode(code)) {
+      otp.attempts += 1; await otp.save();
+      return res.status(400).json({ error: "Incorrect code" });
+    }
+    otp.consumed = true; await otp.save();
+    req.user.email = pending;
+    req.user.pendingEmail = "";
+    req.user.emailVerified = true;
+    await req.user.save();
+    res.json({ ok: true, user: req.user.toPublic() });
+  } catch (e) { next(e); }
+});
+
 export default router;
