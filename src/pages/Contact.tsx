@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Mail, Send, Github, Twitter, Linkedin } from "lucide-react";
+import { Mail, Send, Github, Twitter, Linkedin, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
+import { contactApi } from "@/lib/notesApi";
 
 const schema = z.object({
   name: z.string().trim().min(2).max(80),
@@ -12,12 +13,19 @@ const schema = z.object({
 
 export default function Contact() {
   const [f, setF] = useState({ name: "", email: "", message: "" });
-  const submit = (e: React.FormEvent) => {
+  const [sending, setSending] = useState(false);
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     const r = schema.safeParse(f);
     if (!r.success) { toast.error("Please fill all fields (message ≥ 10 chars)"); return; }
-    toast.success("Thanks! We'll get back to you soon.");
-    setF({ name: "", email: "", message: "" });
+    setSending(true);
+    try {
+      await contactApi.send({ name: f.name, email: f.email, message: f.message });
+      toast.success("Thanks! We'll get back to you soon.");
+      setF({ name: "", email: "", message: "" });
+    } catch (err: any) {
+      toast.error(err?.message ?? "Could not send message");
+    } finally { setSending(false); }
   };
 
   return (
@@ -44,8 +52,8 @@ export default function Contact() {
         <Field label="Name"><input value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} className="inp" /></Field>
         <Field label="Email"><input type="email" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} className="inp" /></Field>
         <Field label="Message"><textarea value={f.message} onChange={(e) => setF({ ...f, message: e.target.value })} className="inp min-h-[140px]" /></Field>
-        <button className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gradient-primary text-primary-foreground font-semibold shadow-soft hover:opacity-90">
-          Send message <Send className="w-4 h-4" />
+        <button disabled={sending} className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gradient-primary text-primary-foreground font-semibold shadow-soft hover:opacity-90 disabled:opacity-60">
+          {sending ? <><Loader2 className="w-4 h-4 animate-spin" /> Sending…</> : <>Send message <Send className="w-4 h-4" /></>}
         </button>
         <style>{`.inp { width:100%; padding:0.6rem 0.9rem; border-radius: 0.75rem; border:1px solid hsl(var(--border)); background: hsl(var(--background)); font-size: 0.875rem; outline: none; transition: border-color .15s, box-shadow .15s; } .inp:focus { border-color: hsl(var(--primary)); box-shadow: 0 0 0 3px hsl(var(--primary) / 0.15); }`}</style>
       </motion.form>
