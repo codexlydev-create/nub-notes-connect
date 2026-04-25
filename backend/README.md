@@ -5,7 +5,7 @@ Standalone API server for the NoteShare frontend. Runs **outside** Lovable.
 ## 1. Install
 
 ```bash
-cd server
+cd backend
 npm install
 ```
 
@@ -16,8 +16,8 @@ cp .env.example .env
 # then edit .env and fill in:
 #   MONGODB_URI            (e.g. mongodb+srv://...  or mongodb://127.0.0.1:27017/noteshare)
 #   JWT_SECRET             (any long random string)
-#   GMAIL_USER             (your gmail address)
-#   GMAIL_APP_PASSWORD     (a Google App Password — NOT your real password)
+#   EMAIL_USER             (your gmail address)
+#   EMAIL_APP_PASSWORD     (a Google App Password — NOT your real password)
 ```
 
 Create a Gmail App Password: https://myaccount.google.com/apppasswords
