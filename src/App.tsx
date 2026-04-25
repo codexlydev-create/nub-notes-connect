@@ -17,13 +17,10 @@ import Saved from "./pages/dashboard/Saved";
 import Profile from "./pages/Profile";
 import { AuthProvider } from "./context/AuthContext";
 import { ThemeProvider } from "./context/ThemeContext";
-import { useEffect } from "react";
-import { initStore } from "./lib/store";
 
 const queryClient = new QueryClient();
 
 const App = () => {
-  useEffect(() => { initStore(); }, []);
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
