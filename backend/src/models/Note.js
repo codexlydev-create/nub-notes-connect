@@ -13,6 +13,8 @@ const noteSchema = new mongoose.Schema(
     fileMime: { type: String, default: "application/pdf" },
     fileSize: { type: Number, default: 0 },
     filePath: { type: String, default: "" }, // relative to uploads/
+    fileUrl: { type: String, default: "" },  // public URL (Cloudflare R2)
+    fileKey: { type: String, default: "" },  // object key in R2
     pageCount: { type: Number, default: 0 },
 
     uploadedBy: {
@@ -40,6 +42,7 @@ noteSchema.methods.toPublic = function () {
     type: this.type,
     fileName: this.fileName,
     fileSize: this.fileSize,
+    fileUrl: this.fileUrl || "",
     pageCount: this.pageCount,
     uploadedBy: this.uploadedBy?.name,
     uploadedById: this.uploadedBy?.id?.toString(),
