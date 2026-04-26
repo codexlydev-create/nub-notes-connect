@@ -18,6 +18,7 @@ export interface Note {
   createdAt: string;
   fileName?: string;
   fileSize?: number;
+  fileUrl?: string;
   pageCount?: number;
 }
 
