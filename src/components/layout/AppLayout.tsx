@@ -3,6 +3,7 @@ import Sidebar from "./Sidebar";
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Menu } from "lucide-react";
+import logo from "@/assets/logo.png";
 
 export default function AppLayout() {
   const [collapsed, setCollapsed] = useState(false);
@@ -14,6 +15,11 @@ export default function AppLayout() {
       setCollapsed(window.innerWidth < 1024);
     }
   }, []);
+
+  // Auto-close mobile drawer on every route change
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [loc.pathname, loc.search]);
 
   return (
     <div className="min-h-screen w-full flex bg-background">
@@ -40,7 +46,7 @@ export default function AppLayout() {
               onClick={(e) => e.stopPropagation()}
               className="h-full"
             >
-              <Sidebar collapsed={false} setCollapsed={() => setMobileOpen(false)} />
+              <Sidebar collapsed={false} setCollapsed={() => setMobileOpen(false)} onNavigate={() => setMobileOpen(false)} />
             </motion.div>
           </motion.div>
         )}
@@ -52,6 +58,10 @@ export default function AppLayout() {
           <button onClick={() => setMobileOpen(true)} className="p-2 rounded-lg hover:bg-muted" aria-label="Open menu">
             <Menu className="w-5 h-5" />
           </button>
+          <div className="flex items-center gap-2 ml-3">
+            <img src={logo} alt="Note Share" className="w-7 h-7 rounded-lg" />
+            <span className="font-bold text-sm">Note Share</span>
+          </div>
         </div>
         <main className="flex-1 overflow-x-hidden">
           <motion.div
