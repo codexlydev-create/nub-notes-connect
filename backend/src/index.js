@@ -9,6 +9,7 @@ import authRoutes from "./routes/auth.js";
 import notesRoutes from "./routes/notes.js";
 import usersRoutes from "./routes/users.js";
 import contactRoutes from "./routes/contact.js";
+import uploadsRoutes from "./routes/uploads.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -26,6 +27,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/notes", notesRoutes);
 app.use("/api/users", usersRoutes);
 app.use("/api/contact", contactRoutes);
+app.use("/api/uploads", uploadsRoutes);
 
 // Centralised error handler
 app.use((err, _req, res, _next) => {
