@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Eye, ThumbsUp, ThumbsDown, Bookmark, FileText, Presentation, Loader2 } from "lucide-react";
+import { Eye, ThumbsUp, ThumbsDown, Bookmark, FileText, Presentation, Loader2, Copy, Check } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { notesApi } from "@/lib/notesApi";
@@ -25,6 +25,7 @@ export default function NoteCard({
   const [me, setMe] = useState<Reactions>(initialReactions ?? { liked: false, disliked: false, saved: false });
   const [counts, setCounts] = useState({ likes: note.likes, dislikes: note.dislikes, saves: note.saves });
   const [busy, setBusy] = useState<null | "like" | "dislike" | "save">(null);
+  const [copied, setCopied] = useState(false);
   const isOwn = !!user && user.id === note.uploadedById;
 
   const requireAuth = () => {
@@ -55,6 +56,16 @@ export default function NoteCard({
   }
 
   const TypeIcon = note.type === "Slide" ? Presentation : FileText;
+
+  const copyStudentId = (e: React.MouseEvent) => {
+    e.preventDefault(); e.stopPropagation();
+    if (!note.uploadedByStudentId) return;
+    navigator.clipboard.writeText(note.uploadedByStudentId).then(() => {
+      setCopied(true);
+      toast.success("Student ID copied");
+      setTimeout(() => setCopied(false), 1500);
+    }).catch(() => toast.error("Couldn't copy"));
+  };
 
   return (
     <motion.div
@@ -88,6 +99,23 @@ export default function NoteCard({
           <span className="truncate">by {note.uploadedBy}</span>
           <span className="flex items-center gap-1"><Eye className="w-3 h-3" /> {note.views}</span>
         </div>
+
+        {note.uploadedByStudentId && (
+          <div className="flex items-center justify-between gap-2 mb-3 px-2.5 py-1.5 rounded-lg bg-muted/40 text-[11px]">
+            <span className="text-muted-foreground">
+              Student ID: <span className="font-mono font-semibold text-foreground">{note.uploadedByStudentId}</span>
+            </span>
+            <button
+              type="button"
+              onClick={copyStudentId}
+              className="p-1 rounded-md hover:bg-background transition-colors"
+              aria-label="Copy student ID"
+              title="Copy student ID"
+            >
+              {copied ? <Check className="w-3.5 h-3.5 text-primary" /> : <Copy className="w-3.5 h-3.5 text-muted-foreground" />}
+            </button>
+          </div>
+        )}
 
         <div className="flex items-center gap-1 pt-3 border-t border-border">
           <Action onClick={(e) => react("like", e)} active={me.liked} loading={busy === "like"} icon={ThumbsUp} count={counts.likes} disabled={isOwn} title={isOwn ? "You can't react to your own note" : undefined} />
