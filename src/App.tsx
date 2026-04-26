@@ -15,6 +15,7 @@ import Auth from "./pages/Auth";
 import Dashboard from "./pages/dashboard/Dashboard";
 import Saved from "./pages/dashboard/Saved";
 import Profile from "./pages/Profile";
+import Upload from "./pages/Upload";
 import { AuthProvider } from "./context/AuthContext";
 import { ThemeProvider } from "./context/ThemeContext";
 
@@ -42,6 +43,7 @@ const App = () => {
                   <Route path="/dashboard" element={<Dashboard />} />
                   <Route path="/dashboard/saved" element={<Saved />} />
                   <Route path="/profile" element={<Profile />} />
+                  <Route path="/upload" element={<Upload />} />
                 </Route>
                 <Route path="*" element={<NotFound />} />
               </Routes>
