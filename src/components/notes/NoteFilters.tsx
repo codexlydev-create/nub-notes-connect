@@ -9,10 +9,11 @@ export interface FilterState {
   title: string;
   type: string;
   courseCode: string;
+  studentId: string;
 }
 
 export const emptyFilters: FilterState = {
-  department: "", course: "", title: "", type: "", courseCode: "",
+  department: "", course: "", title: "", type: "", courseCode: "", studentId: "",
 };
 
 export default function NoteFilters({ value, onChange }: { value: FilterState; onChange: (v: FilterState) => void }) {
@@ -23,7 +24,7 @@ export default function NoteFilters({ value, onChange }: { value: FilterState; o
 
   return (
     <div className="rounded-2xl bg-card border border-border shadow-card p-5 mb-6">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
         <Select label="Department" value={value.department} onChange={(v) => onChange({ ...value, department: v, course: "" })} options={["", ...allDepartments]} />
         <Select label="Course" value={value.course} onChange={(v) => set("course", v)} options={["", ...courses]} disabled={!value.department} />
         <Field label="Course Title">
@@ -46,6 +47,14 @@ export default function NoteFilters({ value, onChange }: { value: FilterState; o
               placeholder="CSE 2101"
             />
           </div>
+        </Field>
+        <Field label="Student ID">
+          <input
+            value={value.studentId}
+            onChange={(e) => set("studentId", e.target.value)}
+            className="input-style"
+            placeholder="e.g. 0102210"
+          />
         </Field>
       </div>
       <div className="flex justify-end mt-4">
