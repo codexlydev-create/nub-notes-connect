@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   Home, Search, Users, Info, Mail, LayoutDashboard, LogIn, Bookmark,
-  ChevronLeft, ChevronRight, LogOut, Moon, Sun, UserCircle2,
+  ChevronLeft, ChevronRight, LogOut, Moon, Sun, UserCircle2, UploadCloud,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
@@ -21,6 +21,7 @@ const publicLinks = [
 
 const privateLinks = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/upload", label: "Upload Note", icon: UploadCloud },
   { to: "/dashboard/saved", label: "Saved Notes", icon: Bookmark },
   { to: "/profile", label: "Profile", icon: UserCircle2 },
 ];

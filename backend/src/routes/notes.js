@@ -63,7 +63,9 @@ router.get("/:id/file", async (req, res, next) => {
   try {
     if (!isObjectId(req.params.id)) return res.status(400).json({ error: "Bad id" });
     const note = await Note.findById(req.params.id);
-    if (!note || !note.filePath) return res.status(404).json({ error: "File not found" });
+    if (!note) return res.status(404).json({ error: "File not found" });
+    if (note.fileUrl) return res.redirect(302, note.fileUrl);
+    if (!note.filePath) return res.status(404).json({ error: "File not found" });
     const abs = path.join(UPLOAD_DIR, note.filePath);
     if (!fs.existsSync(abs)) return res.status(404).json({ error: "File missing" });
     res.setHeader("Content-Type", note.fileMime || "application/pdf");
