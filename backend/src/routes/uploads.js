@@ -1,0 +1,91 @@
+import express from "express";
+import crypto from "node:crypto";
+import path from "node:path";
+import { z } from "zod";
+import { requireAuth } from "../lib/auth.js";
+import Note from "../models/Note.js";
+import { presignPutUrl, publicUrlFor } from "../lib/r2.js";
+
+const router = express.Router();
+const MAX_BYTES = 50 * 1024 * 1024; // 50MB
+
+/**
+ * POST /api/uploads/generate-upload-url
+ * Body: { fileName, fileType, fileSize? }
+ * Returns: { uploadUrl, fileUrl, key, expiresIn }
+ */
+router.post("/generate-upload-url", requireAuth, async (req, res, next) => {
+  try {
+    const schema = z.object({
+      fileName: z.string().min(1).max(255),
+      fileType: z.literal("application/pdf"),
+      fileSize: z.coerce.number().int().positive().max(MAX_BYTES).optional(),
+    });
+    const { fileName, fileType } = schema.parse(req.body);
+
+    const safeBase = path
+      .basename(fileName)
+      .replace(/[^a-zA-Z0-9._-]+/g, "_")
+      .slice(0, 120);
+    const ext = path.extname(safeBase).toLowerCase() || ".pdf";
+    const stem = path.basename(safeBase, ext) || "note";
+    const key = `notes/${req.user._id.toString()}/${Date.now()}-${crypto
+      .randomBytes(6)
+      .toString("hex")}-${stem}${ext}`;
+
+    const uploadUrl = await presignPutUrl(key, fileType, 300);
+    const fileUrl = publicUrlFor(key);
+    res.json({ uploadUrl, fileUrl, key, expiresIn: 300 });
+  } catch (e) {
+    next(e);
+  }
+});
+
+/**
+ * POST /api/uploads/save-file
+ * Persists note metadata after the file is uploaded directly to R2.
+ */
+router.post("/save-file", requireAuth, async (req, res, next) => {
+  try {
+    const schema = z.object({
+      title: z.string().min(1).max(200),
+      description: z.string().max(2000).default(""),
+      department: z.string().min(1).max(100),
+      course: z.string().min(1).max(150),
+      courseCode: z.string().min(1).max(40),
+      type: z.enum(["Slide", "Hand Notes"]),
+      fileName: z.string().min(1).max(255),
+      fileUrl: z.string().url(),
+      fileSize: z.coerce.number().int().nonnegative().max(MAX_BYTES).default(0),
+      fileKey: z.string().max(512).optional(),
+      pageCount: z.coerce.number().int().nonnegative().default(0),
+    });
+    const data = schema.parse(req.body);
+
+    const note = await Note.create({
+      title: data.title,
+      description: data.description,
+      department: data.department,
+      course: data.course,
+      courseCode: data.courseCode,
+      type: data.type,
+      fileName: data.fileName,
+      fileMime: "application/pdf",
+      fileSize: data.fileSize,
+      fileUrl: data.fileUrl,
+      fileKey: data.fileKey || "",
+      pageCount: data.pageCount,
+      uploadedBy: {
+        id: req.user._id,
+        name: req.user.name,
+        studentId: req.user.studentId || "",
+      },
+    });
+
+    res.status(201).json({ note: note.toPublic() });
+  } catch (e) {
+    next(e);
+  }
+});
+
+export default router;
