@@ -24,7 +24,7 @@ export default function FindNotes() {
     setLoading(true); setError(null);
     notesApi.list({
       department: filters.department, course: filters.course, type: filters.type,
-      q: filters.title, courseCode: filters.courseCode,
+      q: filters.title, courseCode: filters.courseCode, studentId: filters.studentId,
       page, limit: PER_PAGE,
     })
       .then((r) => { if (!active) return; setNotes(r.items); setTotal(r.total); })

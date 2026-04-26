@@ -3,7 +3,7 @@ import type { Note } from "./types";
 
 export interface ListParams {
   department?: string; course?: string; type?: string;
-  q?: string; courseCode?: string; page?: number; limit?: number;
+  q?: string; courseCode?: string; studentId?: string; page?: number; limit?: number;
 }
 
 export const notesApi = {
@@ -44,7 +44,7 @@ export const notesApi = {
 export const contributorsApi = {
   list: () =>
     api<{
-      items: Array<{ id: string; name: string; uploads: number; totalViews: number; totalLikes: number }>;
+      items: Array<{ id: string; name: string; studentId: string; uploads: number; totalViews: number; totalLikes: number; totalDislikes: number }>;
     }>("/api/users/contributors"),
 };
 

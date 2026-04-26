@@ -3,12 +3,13 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   Home, Search, Users, Info, Mail, LayoutDashboard, LogIn, Bookmark,
-  GraduationCap, ChevronLeft, ChevronRight, LogOut, Moon, Sun, UserCircle2,
+  ChevronLeft, ChevronRight, LogOut, Moon, Sun, UserCircle2,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import logo from "@/assets/logo.png";
 
 const publicLinks = [
   { to: "/", label: "Home", icon: Home },
@@ -24,7 +25,7 @@ const privateLinks = [
   { to: "/profile", label: "Profile", icon: UserCircle2 },
 ];
 
-export default function Sidebar({ collapsed, setCollapsed }: { collapsed: boolean; setCollapsed: (v: boolean) => void }) {
+export default function Sidebar({ collapsed, setCollapsed, onNavigate }: { collapsed: boolean; setCollapsed: (v: boolean) => void; onNavigate?: () => void }) {
   const { user, logout } = useAuth();
   const { theme, toggle } = useTheme();
   const navigate = useNavigate();
@@ -34,6 +35,7 @@ export default function Sidebar({ collapsed, setCollapsed }: { collapsed: boolea
     logout();
     toast.success("Signed out");
     navigate("/", { replace: true });
+    onNavigate?.();
   };
 
   return (
@@ -44,9 +46,7 @@ export default function Sidebar({ collapsed, setCollapsed }: { collapsed: boolea
       className="sticky top-0 h-screen shrink-0 border-r border-border bg-sidebar flex flex-col"
     >
       <div className="flex items-center gap-3 px-5 py-5 border-b border-sidebar-border">
-        <div className="w-9 h-9 rounded-xl bg-gradient-primary flex items-center justify-center shadow-elegant shrink-0">
-          <GraduationCap className="w-5 h-5 text-primary-foreground" />
-        </div>
+        <img src={logo} alt="Note Share" className="w-9 h-9 rounded-xl shadow-elegant shrink-0" />
         {!collapsed && (
           <div className="overflow-hidden">
             <div className="font-bold text-sidebar-foreground leading-tight">Note Share</div>
@@ -57,12 +57,12 @@ export default function Sidebar({ collapsed, setCollapsed }: { collapsed: boolea
 
       <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
         <SectionLabel collapsed={collapsed}>Explore</SectionLabel>
-        {publicLinks.map((l) => <Item key={l.to} {...l} collapsed={collapsed} />)}
+        {publicLinks.map((l) => <Item key={l.to} {...l} collapsed={collapsed} onNavigate={onNavigate} />)}
 
         {user && (
           <>
             <SectionLabel collapsed={collapsed} className="mt-4">Account</SectionLabel>
-            {privateLinks.map((l) => <Item key={l.to} {...l} collapsed={collapsed} />)}
+            {privateLinks.map((l) => <Item key={l.to} {...l} collapsed={collapsed} onNavigate={onNavigate} />)}
           </>
         )}
       </nav>
@@ -72,6 +72,7 @@ export default function Sidebar({ collapsed, setCollapsed }: { collapsed: boolea
           <>
             <NavLink
               to="/profile"
+              onClick={() => onNavigate?.()}
               className={cn(
                 "w-full flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-sidebar-accent transition-colors",
                 collapsed && "justify-center"
@@ -101,6 +102,7 @@ export default function Sidebar({ collapsed, setCollapsed }: { collapsed: boolea
         ) : (
           <NavLink
             to="/login"
+            onClick={() => onNavigate?.()}
             className={cn(
               "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium bg-gradient-primary text-primary-foreground hover:opacity-90 transition-opacity shadow-soft",
               collapsed && "justify-center"
@@ -144,11 +146,12 @@ function SectionLabel({ children, collapsed, className }: { children: React.Reac
   );
 }
 
-function Item({ to, label, icon: Icon, collapsed }: { to: string; label: string; icon: any; collapsed: boolean }) {
+function Item({ to, label, icon: Icon, collapsed, onNavigate }: { to: string; label: string; icon: any; collapsed: boolean; onNavigate?: () => void }) {
   return (
     <NavLink
       to={to}
       end={to === "/"}
+      onClick={() => onNavigate?.()}
       className={({ isActive }) =>
         cn(
           "group relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all",

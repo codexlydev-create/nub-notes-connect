@@ -24,6 +24,7 @@ router.get("/", async (req, res, next) => {
     if (type) filter.type = type;
     if (courseCode) filter.courseCode = new RegExp(escapeRegex(String(courseCode)), "i");
     if (q) filter.title = new RegExp(escapeRegex(String(q)), "i");
+    if (req.query.studentId) filter["uploadedBy.studentId"] = new RegExp(escapeRegex(String(req.query.studentId)), "i");
     const [items, total] = await Promise.all([
       Note.find(filter).sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit),
       Note.countDocuments(filter),
@@ -91,7 +92,7 @@ router.post("/", requireAuth, uploadPdf.single("file"), async (req, res, next) =
       fileMime: req.file.mimetype,
       fileSize: req.file.size,
       filePath: req.file.filename,
-      uploadedBy: { id: req.user._id, name: req.user.name },
+      uploadedBy: { id: req.user._id, name: req.user.name, studentId: req.user.studentId || "" },
     });
     res.status(201).json({ note: note.toPublic() });
   } catch (e) {

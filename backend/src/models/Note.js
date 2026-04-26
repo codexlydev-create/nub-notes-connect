@@ -18,6 +18,7 @@ const noteSchema = new mongoose.Schema(
     uploadedBy: {
       id: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true, index: true },
       name: { type: String, required: true },
+      studentId: { type: String, default: "" },
     },
 
     views: { type: Number, default: 0 },
@@ -42,6 +43,7 @@ noteSchema.methods.toPublic = function () {
     pageCount: this.pageCount,
     uploadedBy: this.uploadedBy?.name,
     uploadedById: this.uploadedBy?.id?.toString(),
+    uploadedByStudentId: this.uploadedBy?.studentId || "",
     views: this.views,
     likes: this.likes,
     dislikes: this.dislikes,

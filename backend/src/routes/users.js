@@ -1,4 +1,5 @@
 import express from "express";
+import mongoose from "mongoose";
 import { z } from "zod";
 import User from "../models/User.js";
 import Note from "../models/Note.js";
@@ -14,21 +15,32 @@ router.get("/contributors", async (_req, res, next) => {
         $group: {
           _id: "$uploadedBy.id",
           name: { $first: "$uploadedBy.name" },
+          studentId: { $first: "$uploadedBy.studentId" },
           uploads: { $sum: 1 },
           totalViews: { $sum: "$views" },
           totalLikes: { $sum: "$likes" },
+          totalDislikes: { $sum: "$dislikes" },
         },
       },
       { $sort: { uploads: -1, totalLikes: -1 } },
       { $limit: 50 },
     ]);
+    // Backfill studentId from User doc if missing on note
+    const missing = rows.filter((r) => !r.studentId).map((r) => r._id).filter(Boolean);
+    if (missing.length) {
+      const users = await User.find({ _id: { $in: missing } }).select("_id studentId");
+      const map = new Map(users.map((u) => [u._id.toString(), u.studentId || ""]));
+      rows.forEach((r) => { if (!r.studentId && r._id) r.studentId = map.get(r._id.toString()) || ""; });
+    }
     res.json({
       items: rows.map((r) => ({
         id: r._id?.toString(),
         name: r.name,
+        studentId: r.studentId || "",
         uploads: r.uploads,
         totalViews: r.totalViews,
         totalLikes: r.totalLikes,
+        totalDislikes: r.totalDislikes || 0,
       })),
     });
   } catch (e) { next(e); }

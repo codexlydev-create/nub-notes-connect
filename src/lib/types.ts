@@ -10,6 +10,7 @@ export interface Note {
   type: NoteType;
   uploadedBy: string;
   uploadedById: string;
+  uploadedByStudentId?: string;
   views: number;
   likes: number;
   dislikes: number;
