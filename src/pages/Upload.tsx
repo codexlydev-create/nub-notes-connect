@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { UploadCloud, FileText, X, CheckCircle2, Loader2 } from "lucide-react";
@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { useAuth } from "@/context/AuthContext";
 import { DEPARTMENTS, COURSES_BY_DEPT } from "@/data/seed";
+import { taxonomyApi } from "@/lib/taxonomyApi";
 import { uploadsApi, putToPresignedUrl } from "@/lib/uploadsApi";
 import { ApiError } from "@/lib/api";
 import type { NoteType } from "@/lib/types";
@@ -20,26 +21,45 @@ function formatSize(bytes: number) {
 }
 
 export default function Upload() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
 
   const [file, setFile] = useState<File | null>(null);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [department, setDepartment] = useState("");
-  const [course, setCourse] = useState("");
+  const [deptChoice, setDeptChoice] = useState("");
+  const [customDept, setCustomDept] = useState("");
+  const [courseChoice, setCourseChoice] = useState("");
+  const [customCourse, setCustomCourse] = useState("");
   const [courseCode, setCourseCode] = useState("");
   const [type, setType] = useState<NoteType>("Slide");
+
+  // Live taxonomy from backend (includes user-added items).
+  const [departments, setDepartments] = useState<string[]>([...DEPARTMENTS].sort());
+  const [coursesByDept, setCoursesByDept] = useState<Record<string, string[]>>(COURSES_BY_DEPT);
+
+  useEffect(() => {
+    taxonomyApi.list()
+      .then((t) => { setDepartments(t.departments); setCoursesByDept(t.coursesByDept); })
+      .catch(() => {});
+  }, []);
 
   const [progress, setProgress] = useState(0);
   const [status, setStatus] = useState<"idle" | "presigning" | "uploading" | "saving" | "done">("idle");
   const [savedUrl, setSavedUrl] = useState<string | null>(null);
 
-  const allDepartments = useMemo(() => [...DEPARTMENTS].sort(), []);
-  const courses = department ? COURSES_BY_DEPT[department] ?? [] : [];
+  const allDepartments = useMemo(() => [...departments].sort(), [departments]);
+  const isOtherDept = deptChoice === "__other__";
+  const department = isOtherDept ? customDept.trim() : deptChoice;
+  const courses = !isOtherDept && department ? coursesByDept[department] ?? [] : [];
+  const isOtherCourse = isOtherDept || courseChoice === "__other__";
+  const course = isOtherCourse ? customCourse.trim() : courseChoice;
   const isBusy = status === "presigning" || status === "uploading" || status === "saving";
 
+  if (authLoading) {
+    return <div className="max-w-md mx-auto mt-20 text-center text-sm text-muted-foreground">Loading…</div>;
+  }
   if (!user) {
     return (
       <div className="max-w-md mx-auto mt-20 text-center">
