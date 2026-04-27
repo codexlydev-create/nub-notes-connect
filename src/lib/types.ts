@@ -27,6 +27,7 @@ export interface User {
   name: string;
   email: string;
   studentId: string;
+  department?: string;
   avatar?: string;
   role?: "Contributor" | "Active Uploader";
   emailVerified?: boolean;
