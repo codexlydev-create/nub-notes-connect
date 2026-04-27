@@ -87,6 +87,7 @@ export default function Upload() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!file) return toast.error("Please select a PDF");
+    if (!title.trim()) return toast.error("Please enter a title");
     if (!department || !course || !courseCode) {
       return toast.error("Please fill in all required fields");
     }
