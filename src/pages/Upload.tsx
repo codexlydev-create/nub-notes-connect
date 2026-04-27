@@ -81,14 +81,20 @@ export default function Upload() {
       return;
     }
     setFile(f);
-    if (!title) setTitle(f.name.replace(/\.pdf$/i, ""));
+    setTitle(f.name.replace(/\.pdf$/i, ""));
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!file) return toast.error("Please select a PDF");
-    if (!title || !department || !course || !courseCode) {
+    if (!department || !course || !courseCode) {
       return toast.error("Please fill in all required fields");
+    }
+    if (deptChoice === "__other__" && !customDept.trim()) {
+      return toast.error("Please enter the department name");
+    }
+    if ((deptChoice === "__other__" || courseChoice === "__other__") && !customCourse.trim()) {
+      return toast.error("Please enter the course name");
     }
 
     try {
@@ -104,8 +110,20 @@ export default function Upload() {
       await putToPresignedUrl(uploadUrl, file, setProgress);
 
       setStatus("saving");
+
+      // Persist newly entered department / course to taxonomy so future
+      // uploads + Find filters list them automatically.
+      try {
+        if (deptChoice === "__other__" && customDept.trim()) {
+          await taxonomyApi.add({ kind: "department", name: customDept.trim() });
+        }
+        if (courseChoice === "__other__" && customCourse.trim() && department) {
+          await taxonomyApi.add({ kind: "course", name: customCourse.trim(), parent: department });
+        }
+      } catch { /* non-fatal */ }
+
       const { note } = await uploadsApi.saveFile({
-        title: title.trim(),
+        title: (title || file.name.replace(/\.pdf$/i, "")).trim(),
         description: description.trim(),
         department,
         course,
@@ -131,8 +149,10 @@ export default function Upload() {
     setFile(null);
     setTitle("");
     setDescription("");
-    setDepartment("");
-    setCourse("");
+    setDeptChoice("");
+    setCustomDept("");
+    setCourseChoice("");
+    setCustomCourse("");
     setCourseCode("");
     setType("Slide");
     setProgress(0);
@@ -226,33 +246,60 @@ export default function Upload() {
 
           {/* Metadata */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Field label="Title*">
-              <input className="input-style" value={title} onChange={(e) => setTitle(e.target.value)} disabled={isBusy} maxLength={200} />
-            </Field>
-            <Field label="Course Code*">
-              <input className="input-style" value={courseCode} onChange={(e) => setCourseCode(e.target.value)} disabled={isBusy} maxLength={40} />
-            </Field>
             <Field label="Department*">
               <select
                 className="input-style"
-                value={department}
-                onChange={(e) => { setDepartment(e.target.value); setCourse(""); }}
+                value={deptChoice}
+                onChange={(e) => {
+                  setDeptChoice(e.target.value);
+                  setCourseChoice("");
+                  setCustomCourse("");
+                  if (e.target.value !== "__other__") setCustomDept("");
+                }}
                 disabled={isBusy}
               >
                 <option value="">Select department</option>
                 {allDepartments.map((d) => <option key={d} value={d}>{d}</option>)}
+                <option value="__other__">Others (enter manually)</option>
               </select>
+              {deptChoice === "__other__" && (
+                <input
+                  className="input-style mt-2"
+                  placeholder="Enter department name"
+                  value={customDept}
+                  onChange={(e) => setCustomDept(e.target.value)}
+                  disabled={isBusy}
+                  maxLength={120}
+                />
+              )}
             </Field>
             <Field label="Course*">
               <select
                 className="input-style"
-                value={course}
-                onChange={(e) => setCourse(e.target.value)}
-                disabled={isBusy || !department}
+                value={courseChoice}
+                onChange={(e) => {
+                  setCourseChoice(e.target.value);
+                  if (e.target.value !== "__other__") setCustomCourse("");
+                }}
+                disabled={isBusy || (!isOtherDept && !department)}
               >
-                <option value="">{department ? "Select course" : "Select department first"}</option>
+                <option value="">{department || isOtherDept ? "Select course" : "Select department first"}</option>
                 {courses.map((c) => <option key={c} value={c}>{c}</option>)}
+                {(isOtherDept || department) && <option value="__other__">Others (enter manually)</option>}
               </select>
+              {(isOtherDept || courseChoice === "__other__") && (
+                <input
+                  className="input-style mt-2"
+                  placeholder="Enter course name"
+                  value={customCourse}
+                  onChange={(e) => setCustomCourse(e.target.value)}
+                  disabled={isBusy}
+                  maxLength={150}
+                />
+              )}
+            </Field>
+            <Field label="Course Code*">
+              <input className="input-style" value={courseCode} onChange={(e) => setCourseCode(e.target.value)} disabled={isBusy} maxLength={40} />
             </Field>
             <Field label="Type*">
               <select
