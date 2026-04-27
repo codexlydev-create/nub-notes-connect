@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import type { User } from "@/lib/types";
-import { api, getToken, setToken } from "@/lib/api";
+import { api, ApiError, getToken, setToken } from "@/lib/api";
 
 interface AuthCtx {
   user: User | null;
@@ -9,7 +9,7 @@ interface AuthCtx {
   /** Step 1: send signup OTP to email. */
   beginRegister: (data: { name: string; email: string; studentId: string; password: string }) => Promise<{ email: string }>;
   /** Step 2: verify OTP and create the account. */
-  completeRegister: (data: { name: string; email: string; studentId: string; password: string; otp: string }) => Promise<User>;
+  completeRegister: (data: { name: string; email: string; studentId: string; department?: string; password: string; otp: string }) => Promise<User>;
   /** Re-send signup OTP. */
   resendOtp: (email: string) => Promise<void>;
   logout: () => void;
@@ -37,9 +37,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const r = await api<{ user: User }>("/api/auth/me", { auth: true });
       setUser(r.user);
-    } catch {
-      setToken(null);
-      setUser(null);
+    } catch (e) {
+      // ONLY clear the token on a true 401 — keep it through transient
+      // network / 5xx / cold-start errors so the user stays logged in.
+      if (e instanceof ApiError && e.status === 401) {
+        setToken(null);
+        setUser(null);
+      }
     }
   };
 
@@ -79,6 +83,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email: data.email,
         password: data.password,
         studentId: data.studentId,
+        department: data.department || "",
         otpToken: v.otpToken,
       },
     });
