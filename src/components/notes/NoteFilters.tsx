@@ -1,6 +1,7 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Search, RotateCcw } from "lucide-react";
 import { DEPARTMENTS, COURSES_BY_DEPT } from "@/data/seed";
+import { taxonomyApi } from "@/lib/taxonomyApi";
 import type { NoteType } from "@/lib/types";
 
 export interface FilterState {
@@ -17,8 +18,17 @@ export const emptyFilters: FilterState = {
 };
 
 export default function NoteFilters({ value, onChange }: { value: FilterState; onChange: (v: FilterState) => void }) {
-  const allDepartments = useMemo(() => [...DEPARTMENTS].sort(), []);
-  const courses = value.department ? COURSES_BY_DEPT[value.department] ?? [] : [];
+  const [departments, setDepartments] = useState<string[]>([...DEPARTMENTS].sort());
+  const [coursesByDept, setCoursesByDept] = useState<Record<string, string[]>>(COURSES_BY_DEPT);
+
+  useEffect(() => {
+    taxonomyApi.list()
+      .then((t) => { setDepartments(t.departments); setCoursesByDept(t.coursesByDept); })
+      .catch(() => {});
+  }, []);
+
+  const allDepartments = useMemo(() => [...departments].sort(), [departments]);
+  const courses = value.department ? coursesByDept[value.department] ?? [] : [];
   const set = <K extends keyof FilterState>(k: K, v: FilterState[K]) =>
     onChange({ ...value, [k]: v });
 

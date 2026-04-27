@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Eye, EyeOff, GraduationCap, Mail, Lock, User, IdCard, ArrowRight, KeyRound } from "lucide-react";
+import { Eye, EyeOff, GraduationCap, Mail, Lock, User, IdCard, ArrowRight, KeyRound, Building2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 import { z } from "zod";
+import { taxonomyApi } from "@/lib/taxonomyApi";
+import { DEPARTMENTS as SEED_DEPTS } from "@/data/seed";
 
 type Mode = "login" | "register" | "forgot" | "verify";
 
@@ -12,6 +14,7 @@ const registerSchema = z.object({
   name: z.string().trim().min(2, "Name too short").max(80),
   email: z.string().trim().email("Invalid email"),
   studentId: z.string().trim().min(3, "Student ID required").max(40),
+  department: z.string().trim().min(1, "Please select your department").max(120),
   password: z.string().min(6, "At least 6 characters").max(100),
   confirm: z.string(),
 }).refine((d) => d.password === d.confirm, { path: ["confirm"], message: "Passwords do not match" });
@@ -21,9 +24,14 @@ export default function Auth({ mode: initial = "login" as Mode }: { mode?: Mode 
   const { login, beginRegister, completeRegister, resendOtp, sendResetOtp, resetPassword } = useAuth();
   const navigate = useNavigate();
   const [show, setShow] = useState(false);
-  const [form, setForm] = useState({ name: "", email: "", studentId: "", password: "", confirm: "", otp: "" });
+  const [form, setForm] = useState({ name: "", email: "", studentId: "", department: "", password: "", confirm: "", otp: "" });
   const [loading, setLoading] = useState(false);
   const [pendingEmail, setPendingEmail] = useState<string>("");
+  const [departments, setDepartments] = useState<string[]>(SEED_DEPTS);
+
+  useEffect(() => {
+    taxonomyApi.list().then((t) => setDepartments(t.departments)).catch(() => {});
+  }, []);
 
   const set = (k: keyof typeof form, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -46,7 +54,8 @@ export default function Auth({ mode: initial = "login" as Mode }: { mode?: Mode 
         if (!form.otp || form.otp.length < 4) { toast.error("Enter the 6-digit OTP"); return; }
         await completeRegister({
           name: form.name, email: pendingEmail || form.email,
-          studentId: form.studentId, password: form.password, otp: form.otp,
+          studentId: form.studentId, department: form.department,
+          password: form.password, otp: form.otp,
         });
         toast.success("Email verified — welcome!");
         navigate("/dashboard");
@@ -95,6 +104,10 @@ export default function Auth({ mode: initial = "login" as Mode }: { mode?: Mode 
                 <motion.div key="reg-fields" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="space-y-3 overflow-hidden">
                   <Input icon={User} placeholder="Full name" value={form.name} onChange={(v) => set("name", v)} />
                   <Input icon={IdCard} placeholder="Student ID (e.g. NUB-CSE-2401)" value={form.studentId} onChange={(v) => set("studentId", v)} />
+                  <SelectField icon={Building2} value={form.department} onChange={(v) => set("department", v)}>
+                    <option value="">Select your department</option>
+                    {departments.map((d) => <option key={d} value={d}>{d}</option>)}
+                  </SelectField>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -186,6 +199,21 @@ function Input({ icon: Icon, trailing, type = "text", ...p }: any) {
         className="w-full pl-10 pr-10 py-3 rounded-xl border border-border bg-background text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 transition"
       />
       {trailing && <div className="absolute right-3.5 top-1/2 -translate-y-1/2">{trailing}</div>}
+    </div>
+  );
+}
+
+function SelectField({ icon: Icon, value, onChange, children }: { icon: any; value: string; onChange: (v: string) => void; children: React.ReactNode }) {
+  return (
+    <div className="relative">
+      <Icon className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full pl-10 pr-3 py-3 rounded-xl border border-border bg-background text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 transition appearance-none"
+      >
+        {children}
+      </select>
     </div>
   );
 }

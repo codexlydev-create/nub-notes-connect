@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { UploadCloud, FileText, X, CheckCircle2, Loader2 } from "lucide-react";
@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { useAuth } from "@/context/AuthContext";
 import { DEPARTMENTS, COURSES_BY_DEPT } from "@/data/seed";
+import { taxonomyApi } from "@/lib/taxonomyApi";
 import { uploadsApi, putToPresignedUrl } from "@/lib/uploadsApi";
 import { ApiError } from "@/lib/api";
 import type { NoteType } from "@/lib/types";
@@ -20,26 +21,45 @@ function formatSize(bytes: number) {
 }
 
 export default function Upload() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
 
   const [file, setFile] = useState<File | null>(null);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [department, setDepartment] = useState("");
-  const [course, setCourse] = useState("");
+  const [deptChoice, setDeptChoice] = useState("");
+  const [customDept, setCustomDept] = useState("");
+  const [courseChoice, setCourseChoice] = useState("");
+  const [customCourse, setCustomCourse] = useState("");
   const [courseCode, setCourseCode] = useState("");
   const [type, setType] = useState<NoteType>("Slide");
+
+  // Live taxonomy from backend (includes user-added items).
+  const [departments, setDepartments] = useState<string[]>([...DEPARTMENTS].sort());
+  const [coursesByDept, setCoursesByDept] = useState<Record<string, string[]>>(COURSES_BY_DEPT);
+
+  useEffect(() => {
+    taxonomyApi.list()
+      .then((t) => { setDepartments(t.departments); setCoursesByDept(t.coursesByDept); })
+      .catch(() => {});
+  }, []);
 
   const [progress, setProgress] = useState(0);
   const [status, setStatus] = useState<"idle" | "presigning" | "uploading" | "saving" | "done">("idle");
   const [savedUrl, setSavedUrl] = useState<string | null>(null);
 
-  const allDepartments = useMemo(() => [...DEPARTMENTS].sort(), []);
-  const courses = department ? COURSES_BY_DEPT[department] ?? [] : [];
+  const allDepartments = useMemo(() => [...departments].sort(), [departments]);
+  const isOtherDept = deptChoice === "__other__";
+  const department = isOtherDept ? customDept.trim() : deptChoice;
+  const courses = !isOtherDept && department ? coursesByDept[department] ?? [] : [];
+  const isOtherCourse = isOtherDept || courseChoice === "__other__";
+  const course = isOtherCourse ? customCourse.trim() : courseChoice;
   const isBusy = status === "presigning" || status === "uploading" || status === "saving";
 
+  if (authLoading) {
+    return <div className="max-w-md mx-auto mt-20 text-center text-sm text-muted-foreground">Loading…</div>;
+  }
   if (!user) {
     return (
       <div className="max-w-md mx-auto mt-20 text-center">
@@ -61,14 +81,20 @@ export default function Upload() {
       return;
     }
     setFile(f);
-    if (!title) setTitle(f.name.replace(/\.pdf$/i, ""));
+    setTitle(f.name.replace(/\.pdf$/i, ""));
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!file) return toast.error("Please select a PDF");
-    if (!title || !department || !course || !courseCode) {
+    if (!department || !course || !courseCode) {
       return toast.error("Please fill in all required fields");
+    }
+    if (deptChoice === "__other__" && !customDept.trim()) {
+      return toast.error("Please enter the department name");
+    }
+    if ((deptChoice === "__other__" || courseChoice === "__other__") && !customCourse.trim()) {
+      return toast.error("Please enter the course name");
     }
 
     try {
@@ -84,8 +110,20 @@ export default function Upload() {
       await putToPresignedUrl(uploadUrl, file, setProgress);
 
       setStatus("saving");
+
+      // Persist newly entered department / course to taxonomy so future
+      // uploads + Find filters list them automatically.
+      try {
+        if (deptChoice === "__other__" && customDept.trim()) {
+          await taxonomyApi.add({ kind: "department", name: customDept.trim() });
+        }
+        if (courseChoice === "__other__" && customCourse.trim() && department) {
+          await taxonomyApi.add({ kind: "course", name: customCourse.trim(), parent: department });
+        }
+      } catch { /* non-fatal */ }
+
       const { note } = await uploadsApi.saveFile({
-        title: title.trim(),
+        title: (title || file.name.replace(/\.pdf$/i, "")).trim(),
         description: description.trim(),
         department,
         course,
@@ -111,8 +149,10 @@ export default function Upload() {
     setFile(null);
     setTitle("");
     setDescription("");
-    setDepartment("");
-    setCourse("");
+    setDeptChoice("");
+    setCustomDept("");
+    setCourseChoice("");
+    setCustomCourse("");
     setCourseCode("");
     setType("Slide");
     setProgress(0);
@@ -206,33 +246,60 @@ export default function Upload() {
 
           {/* Metadata */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Field label="Title*">
-              <input className="input-style" value={title} onChange={(e) => setTitle(e.target.value)} disabled={isBusy} maxLength={200} />
-            </Field>
-            <Field label="Course Code*">
-              <input className="input-style" value={courseCode} onChange={(e) => setCourseCode(e.target.value)} disabled={isBusy} maxLength={40} />
-            </Field>
             <Field label="Department*">
               <select
                 className="input-style"
-                value={department}
-                onChange={(e) => { setDepartment(e.target.value); setCourse(""); }}
+                value={deptChoice}
+                onChange={(e) => {
+                  setDeptChoice(e.target.value);
+                  setCourseChoice("");
+                  setCustomCourse("");
+                  if (e.target.value !== "__other__") setCustomDept("");
+                }}
                 disabled={isBusy}
               >
                 <option value="">Select department</option>
                 {allDepartments.map((d) => <option key={d} value={d}>{d}</option>)}
+                <option value="__other__">Others (enter manually)</option>
               </select>
+              {deptChoice === "__other__" && (
+                <input
+                  className="input-style mt-2"
+                  placeholder="Enter department name"
+                  value={customDept}
+                  onChange={(e) => setCustomDept(e.target.value)}
+                  disabled={isBusy}
+                  maxLength={120}
+                />
+              )}
             </Field>
             <Field label="Course*">
               <select
                 className="input-style"
-                value={course}
-                onChange={(e) => setCourse(e.target.value)}
-                disabled={isBusy || !department}
+                value={courseChoice}
+                onChange={(e) => {
+                  setCourseChoice(e.target.value);
+                  if (e.target.value !== "__other__") setCustomCourse("");
+                }}
+                disabled={isBusy || (!isOtherDept && !department)}
               >
-                <option value="">{department ? "Select course" : "Select department first"}</option>
+                <option value="">{department || isOtherDept ? "Select course" : "Select department first"}</option>
                 {courses.map((c) => <option key={c} value={c}>{c}</option>)}
+                {(isOtherDept || department) && <option value="__other__">Others (enter manually)</option>}
               </select>
+              {(isOtherDept || courseChoice === "__other__") && (
+                <input
+                  className="input-style mt-2"
+                  placeholder="Enter course name"
+                  value={customCourse}
+                  onChange={(e) => setCustomCourse(e.target.value)}
+                  disabled={isBusy}
+                  maxLength={150}
+                />
+              )}
+            </Field>
+            <Field label="Course Code*">
+              <input className="input-style" value={courseCode} onChange={(e) => setCourseCode(e.target.value)} disabled={isBusy} maxLength={40} />
             </Field>
             <Field label="Type*">
               <select

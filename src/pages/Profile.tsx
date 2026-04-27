@@ -6,7 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 
 export default function Profile() {
-  const { user, updateProfile, changePassword, requestEmailChange, confirmEmailChange } = useAuth();
+  const { user, loading: authLoading, updateProfile, changePassword, requestEmailChange, confirmEmailChange } = useAuth();
   const navigate = useNavigate();
   const [form, setForm] = useState({ name: "", email: "", studentId: "" });
   const [emailSaving, setEmailSaving] = useState(false);
@@ -17,12 +17,21 @@ export default function Profile() {
   const [showPw, setShowPw] = useState(false);
   const [pwSaving, setPwSaving] = useState(false);
 
+  // Only redirect once auth has finished hydrating — otherwise a refresh
+  // briefly shows `user === null` and kicks the user to /login.
   useEffect(() => {
+    if (authLoading) return;
     if (!user) { navigate("/login", { replace: true }); return; }
     setForm({ name: user.name, email: user.email, studentId: user.studentId });
-  }, [user, navigate]);
+  }, [authLoading, user, navigate]);
 
-  if (!user) return null;
+  if (authLoading || !user) {
+    return (
+      <div className="max-w-3xl mx-auto py-10 text-sm text-muted-foreground">
+        Loading your profile…
+      </div>
+    );
+  }
 
   const saveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
