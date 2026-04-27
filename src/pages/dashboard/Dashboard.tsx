@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Trash2, Eye, ThumbsUp, ThumbsDown, Bookmark, FileText, Loader2 } from "lucide-react";
+import { Plus, Trash2, Eye, ThumbsUp, ThumbsDown, Bookmark, FileText, Loader2, Pencil } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { notesApi } from "@/lib/notesApi";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Note } from "@/lib/types";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
+import EditNoteModal from "@/components/notes/EditNoteModal";
 
 export default function Dashboard() {
   const { user, loading: authLoading } = useAuth();
@@ -15,6 +16,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [confirmDelete, setConfirmDelete] = useState<Note | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [editing, setEditing] = useState<Note | null>(null);
 
   // Hooks must run unconditionally — keep them above any early return.
   const refresh = () => {
@@ -99,16 +101,22 @@ export default function Dashboard() {
               <div className="grid grid-cols-4 gap-1 text-[11px] text-muted-foreground mb-4">
                 <Stat icon={Eye} v={n.views} /><Stat icon={ThumbsUp} v={n.likes} /><Stat icon={ThumbsDown} v={n.dislikes} /><Stat icon={Bookmark} v={n.saves} />
               </div>
-              <div className="flex gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 <button
                   onClick={() => navigate(`/notes/${n.id}`)}
-                  className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border border-border hover:bg-muted text-xs font-medium"
+                  className="inline-flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg border border-border hover:bg-muted text-xs font-medium"
                 >
                   View
                 </button>
                 <button
+                  onClick={() => setEditing(n)}
+                  className="inline-flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg border border-primary/30 text-primary hover:bg-primary/10 text-xs font-medium"
+                >
+                  <Pencil className="w-3.5 h-3.5" /> Edit
+                </button>
+                <button
                   onClick={() => setConfirmDelete(n)}
-                  className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border border-destructive/30 text-destructive hover:bg-destructive/10 text-xs font-medium"
+                  className="inline-flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg border border-destructive/30 text-destructive hover:bg-destructive/10 text-xs font-medium"
                 >
                   <Trash2 className="w-3.5 h-3.5" /> Delete
                 </button>
@@ -130,6 +138,14 @@ export default function Dashboard() {
               catch (e: any) { toast.error(e?.message ?? "Could not delete"); }
               finally { setDeleting(false); }
             }}
+          />
+        )}
+        {editing && (
+          <EditNoteModal
+            key={editing.id}
+            note={editing}
+            onClose={() => setEditing(null)}
+            onSaved={() => { setEditing(null); refresh(); }}
           />
         )}
       </AnimatePresence>
