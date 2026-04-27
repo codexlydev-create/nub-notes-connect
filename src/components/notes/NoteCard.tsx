@@ -95,6 +95,14 @@ export default function NoteCard({
         </h3>
         <p className="text-xs text-muted-foreground line-clamp-2 mb-4">{note.description}</p>
 
+        {note.department && (
+          <div className="mb-3">
+            <span className="inline-block px-2 py-0.5 rounded-md bg-muted text-foreground/80 text-[10px] font-semibold tracking-wide">
+              {note.department}
+            </span>
+          </div>
+        )}
+
         <div className="flex items-center justify-between text-[11px] text-muted-foreground mb-3">
           <span className="truncate">by {note.uploadedBy}</span>
           <span className="flex items-center gap-1"><Eye className="w-3 h-3" /> {note.views}</span>

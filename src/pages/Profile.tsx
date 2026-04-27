@@ -1,14 +1,18 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Mail, IdCard, User as UserIcon, BadgeCheck, Lock, ShieldAlert, KeyRound, Eye, EyeOff } from "lucide-react";
+import { Mail, IdCard, User as UserIcon, BadgeCheck, Lock, ShieldAlert, KeyRound, Eye, EyeOff, Building2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
+import { taxonomyApi } from "@/lib/taxonomyApi";
+import { DEPARTMENTS } from "@/data/seed";
 
 export default function Profile() {
   const { user, loading: authLoading, updateProfile, changePassword, requestEmailChange, confirmEmailChange } = useAuth();
   const navigate = useNavigate();
-  const [form, setForm] = useState({ name: "", email: "", studentId: "" });
+  const [form, setForm] = useState({ name: "", email: "", studentId: "", department: "" });
+  const [departments, setDepartments] = useState<string[]>([...DEPARTMENTS].sort());
+  const [customDept, setCustomDept] = useState("");
   const [emailSaving, setEmailSaving] = useState(false);
   const [saving, setSaving] = useState(false);
   const [otp, setOtp] = useState("");
@@ -22,8 +26,19 @@ export default function Profile() {
   useEffect(() => {
     if (authLoading) return;
     if (!user) { navigate("/login", { replace: true }); return; }
-    setForm({ name: user.name, email: user.email, studentId: user.studentId });
+    setForm({
+      name: user.name,
+      email: user.email,
+      studentId: user.studentId,
+      department: user.department ?? "",
+    });
   }, [authLoading, user, navigate]);
+
+  useEffect(() => {
+    taxonomyApi.list()
+      .then((t) => setDepartments(t.departments))
+      .catch(() => {});
+  }, []);
 
   if (authLoading || !user) {
     return (
@@ -35,9 +50,25 @@ export default function Profile() {
 
   const saveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
+    const isOtherDept = form.department === "__other__";
+    const finalDepartment = isOtherDept ? customDept.trim() : form.department;
+    if (isOtherDept && !finalDepartment) {
+      toast.error("Please enter your department name");
+      return;
+    }
     setSaving(true);
     try {
-      await updateProfile({ name: form.name, studentId: form.studentId });
+      await updateProfile({
+        name: form.name,
+        studentId: form.studentId,
+        department: finalDepartment,
+      });
+      // Persist newly entered department to taxonomy.
+      if (isOtherDept && finalDepartment) {
+        try { await taxonomyApi.add({ kind: "department", name: finalDepartment }); } catch {}
+        setCustomDept("");
+        setForm((f) => ({ ...f, department: finalDepartment }));
+      }
       // If email changed, trigger an email-change verification flow.
       if (user && form.email && form.email !== user.email) {
         setEmailSaving(true);
@@ -147,6 +178,35 @@ export default function Profile() {
         <form onSubmit={saveProfile} className="space-y-4">
           <LabeledInput icon={UserIcon} label="Full name" value={form.name} onChange={(v) => setForm({ ...form, name: v })} />
           <LabeledInput icon={IdCard} label="Student ID" value={form.studentId} onChange={(v) => setForm({ ...form, studentId: v })} />
+          <div>
+            <Label>Department</Label>
+            <div className="relative">
+              <Building2 className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <select
+                value={departments.includes(form.department) || form.department === "" || form.department === "__other__" ? form.department : "__other__"}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setForm({ ...form, department: v });
+                  if (v !== "__other__") setCustomDept("");
+                  else if (!departments.includes(form.department) && form.department) setCustomDept(form.department);
+                }}
+                className="w-full pl-10 pr-4 py-3 rounded-xl border border-border bg-background text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 transition appearance-none"
+              >
+                <option value="">Select department</option>
+                {departments.map((d) => <option key={d} value={d}>{d}</option>)}
+                <option value="__other__">Others (enter manually)</option>
+              </select>
+            </div>
+            {form.department === "__other__" && (
+              <input
+                value={customDept}
+                onChange={(e) => setCustomDept(e.target.value)}
+                placeholder="Enter your department"
+                maxLength={120}
+                className="mt-2 w-full px-4 py-3 rounded-xl border border-border bg-background text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 transition"
+              />
+            )}
+          </div>
           <div>
             <Label>Email address</Label>
             <div className="relative">

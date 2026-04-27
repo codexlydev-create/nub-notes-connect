@@ -87,6 +87,7 @@ export default function Upload() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!file) return toast.error("Please select a PDF");
+    if (!title.trim()) return toast.error("Please enter a title");
     if (!department || !course || !courseCode) {
       return toast.error("Please fill in all required fields");
     }
@@ -246,6 +247,16 @@ export default function Upload() {
 
           {/* Metadata */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Field label="Title*" className="md:col-span-2">
+              <input
+                className="input-style"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                disabled={isBusy}
+                maxLength={200}
+                placeholder="Auto-filled from the PDF file name — edit if you'd like"
+              />
+            </Field>
             <Field label="Department*">
               <select
                 className="input-style"
@@ -312,16 +323,19 @@ export default function Upload() {
                 <option value="Hand Notes">Hand Notes</option>
               </select>
             </Field>
-            <Field label="Description">
+            <Field label="Description" className="md:col-span-2">
               <textarea
-                className="input-style min-h-[42px]"
-                rows={1}
+                className="input-style min-h-[180px] resize-y leading-relaxed"
+                rows={8}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 disabled={isBusy}
                 maxLength={2000}
-                placeholder="Optional"
+                placeholder="Optional — add a summary, topics covered, or anything that helps others"
               />
+              <div className="text-[10px] text-muted-foreground mt-1 text-right">
+                {description.length}/2000
+              </div>
             </Field>
           </div>
 
@@ -346,9 +360,9 @@ export default function Upload() {
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, children, className }: { label: string; children: React.ReactNode; className?: string }) {
   return (
-    <label className="block">
+    <label className={`block ${className ?? ""}`}>
       <div className="text-xs font-semibold text-muted-foreground mb-1.5">{label}</div>
       {children}
     </label>

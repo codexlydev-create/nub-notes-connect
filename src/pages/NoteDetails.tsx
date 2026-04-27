@@ -58,11 +58,25 @@ export default function NoteDetails() {
 
   const downloadPdf = async () => {
     try {
+      toast.loading("Preparing download…", { id: "dl" });
+      // Fetch as a blob so the browser triggers a real download instead of
+      // navigating/opening the PDF inline. Works for both the backend stream
+      // route and direct R2 URLs (CORS-permitting).
+      const res = await fetch(fileSrc, { credentials: "omit" });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
-      a.href = fileSrc; a.download = downloadName; a.target = "_blank";
-      document.body.appendChild(a); a.click(); a.remove();
-      toast.success("Download started");
-    } catch { toast.error("Could not download file"); }
+      a.href = url;
+      a.download = downloadName;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      toast.success("Download started", { id: "dl" });
+    } catch {
+      toast.error("Could not download file", { id: "dl" });
+    }
   };
 
   return (

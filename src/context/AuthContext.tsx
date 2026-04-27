@@ -17,7 +17,7 @@ interface AuthCtx {
   sendResetOtp: (email: string) => Promise<void>;
   /** Verify the reset OTP and set the new password. */
   resetPassword: (email: string, otp: string, newPassword: string) => Promise<void>;
-  updateProfile: (patch: { name?: string; studentId?: string }) => Promise<User>;
+  updateProfile: (patch: { name?: string; studentId?: string; department?: string }) => Promise<User>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   /** Request OTP to a NEW email; the user keeps using their old email until verified. */
   requestEmailChange: (newEmail: string) => Promise<void>;
