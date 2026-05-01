@@ -10,6 +10,7 @@ import { useTheme } from "@/context/ThemeContext";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import logo from "@/assets/logo.png";
+import UserAvatar from "@/components/UserAvatar";
 
 const publicLinks = [
   { to: "/", label: "Home", icon: Home },
@@ -79,9 +80,12 @@ export default function Sidebar({ collapsed, setCollapsed, onNavigate }: { colla
                 collapsed && "justify-center"
               )}
             >
-              <div className="w-9 h-9 rounded-full bg-gradient-primary text-primary-foreground flex items-center justify-center text-xs font-bold shrink-0">
-                {user.name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
-              </div>
+              <UserAvatar
+                name={user.name}
+                photoUrl={user.avatarUrl}
+                className="w-9 h-9"
+                textClass="text-xs"
+              />
               {!collapsed && (
                 <div className="min-w-0 flex-1">
                   <div className="text-sm font-semibold text-sidebar-foreground truncate">{user.name}</div>
