@@ -9,6 +9,7 @@ const userSchema = new mongoose.Schema(
     department: { type: String, default: "" },
     bio: { type: String, default: "" },
     avatarUrl: { type: String, default: "" },
+    avatarKey: { type: String, default: "" },
     emailVerified: { type: Boolean, default: false },
     pendingEmail: { type: String, default: "" },
   },
