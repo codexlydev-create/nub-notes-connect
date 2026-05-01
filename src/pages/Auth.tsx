@@ -77,11 +77,11 @@ export default function Auth({ mode: initial = "login" as Mode }: { mode?: Mode 
   };
 
   return (
-    <div className="min-h-[80vh] flex items-center justify-center">
+    <div className="min-h-[calc(100vh-7rem)] md:min-h-[80vh] flex items-center justify-center px-2 py-6">
       <div className="w-full max-w-md">
         <motion.div
           initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
-          className="rounded-3xl bg-card border border-border shadow-elegant p-8"
+          className="rounded-3xl bg-card border border-border shadow-elegant p-6 sm:p-8"
         >
           <div className="flex items-center gap-3 mb-6">
             <div className="w-11 h-11 rounded-2xl bg-gradient-primary flex items-center justify-center shadow-elegant">
