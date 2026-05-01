@@ -8,6 +8,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 import type { Note } from "@/lib/types";
+import PdfPreview from "@/components/notes/PdfPreview";
+
+function formatBytes(b?: number) {
+  if (!b || b <= 0) return "";
+  if (b < 1024) return `${b} B`;
+  if (b < 1024 * 1024) return `${(b / 1024).toFixed(1)} KB`;
+  return `${(b / (1024 * 1024)).toFixed(2)} MB`;
+}
 
 export default function NoteDetails() {
   const { id } = useParams();
@@ -38,8 +46,11 @@ export default function NoteDetails() {
   if (notFound || !note) return <div className="text-center py-20 text-muted-foreground">Note not found. <Link className="text-primary" to="/find">Back to notes</Link></div>;
 
   const isOwn = !!user && user.id === note.uploadedById;
-  const fileSrc = noteFileUrl(note.id);
+  // Prefer the direct R2 URL (CORS-friendly for react-pdf), fall back to the
+  // backend stream route.
+  const fileSrc = note.fileUrl || noteFileUrl(note.id);
   const downloadName = note.fileName ?? `${note.title}.pdf`;
+  const sizeLabel = formatBytes(note.fileSize);
 
   const requireAuth = () => {
     if (!user) { toast.error("Please login to continue"); navigate("/login"); return false; }
@@ -106,10 +117,19 @@ export default function NoteDetails() {
           <div className="rounded-2xl bg-card border border-border shadow-card overflow-hidden">
             <div className="flex flex-wrap items-center gap-2 p-3 border-b border-border bg-muted/30">
               <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Preview {note.fileName ? <span className="ml-2 normal-case font-normal tracking-normal text-foreground/70">· {note.fileName}</span> : null}
+                Preview
+                {note.fileName ? <span className="ml-2 normal-case font-normal tracking-normal text-foreground/70">· {note.fileName}</span> : null}
+              </div>
+              <div className="ml-auto flex items-center gap-2 text-[11px] text-muted-foreground">
+                {note.pageCount ? <span>{note.pageCount} page{note.pageCount === 1 ? "" : "s"}</span> : null}
+                {sizeLabel ? <span>· {sizeLabel}</span> : null}
               </div>
             </div>
-            <iframe title={note.title} src={`${fileSrc}#toolbar=1&navpanes=0&view=FitH`} className="w-full h-[820px] bg-muted/20" />
+            <div className="max-h-[80vh] overflow-y-auto">
+              <PdfPreview src={fileSrc} onPageCount={(n) => {
+                if (!note.pageCount || note.pageCount !== n) setNote({ ...note, pageCount: n });
+              }} />
+            </div>
           </div>
         </div>
 
@@ -121,8 +141,14 @@ export default function NoteDetails() {
                 <ExternalLink className="w-4 h-4" /> Open PDF
               </a>
               <button onClick={downloadPdf} className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-card border border-border font-semibold hover:bg-muted">
-                <Download className="w-4 h-4" /> Download PDF
+                <Download className="w-4 h-4" /> Download PDF{sizeLabel ? ` (${sizeLabel})` : ""}
               </button>
+            </div>
+            <div className="mt-3 text-[11px] text-muted-foreground">
+              <div><span className="font-semibold text-foreground">Department:</span> {note.department}</div>
+              <div><span className="font-semibold text-foreground">Course:</span> {note.course}</div>
+              {note.pageCount ? <div><span className="font-semibold text-foreground">Pages:</span> {note.pageCount}</div> : null}
+              {sizeLabel ? <div><span className="font-semibold text-foreground">Size:</span> {sizeLabel}</div> : null}
             </div>
           </div>
 
