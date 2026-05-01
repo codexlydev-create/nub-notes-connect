@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Eye, ThumbsUp, ThumbsDown, Bookmark, FileText, Presentation, Loader2, Copy, Check } from "lucide-react";
+import { Eye, ThumbsUp, ThumbsDown, Bookmark, FileText, Presentation, Loader2, Copy, Check, BookOpen, Building2 } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { notesApi } from "@/lib/notesApi";
@@ -7,6 +7,8 @@ import { toast } from "sonner";
 import { useState } from "react";
 import type { Note } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import UserAvatar from "@/components/UserAvatar";
+import { useContributorRank } from "@/hooks/useContributorRanks";
 
 type Reactions = { liked: boolean; disliked: boolean; saved: boolean };
 
@@ -27,6 +29,7 @@ export default function NoteCard({
   const [busy, setBusy] = useState<null | "like" | "dislike" | "save">(null);
   const [copied, setCopied] = useState(false);
   const isOwn = !!user && user.id === note.uploadedById;
+  const rank = useContributorRank(note.uploadedById);
 
   const requireAuth = () => {
     if (!user) {
@@ -95,17 +98,38 @@ export default function NoteCard({
         </h3>
         <p className="text-xs text-muted-foreground line-clamp-2 mb-4">{note.description}</p>
 
-        {note.department && (
-          <div className="mb-3">
-            <span className="inline-block px-2 py-0.5 rounded-md bg-muted text-foreground/80 text-[10px] font-semibold tracking-wide">
-              {note.department}
+        <div className="flex flex-wrap items-center gap-1.5 mb-3">
+          {note.department && (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-muted text-foreground/80 text-[10px] font-semibold tracking-wide">
+              <Building2 className="w-3 h-3" /> {note.department}
             </span>
-          </div>
-        )}
+          )}
+          {note.course && (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-accent/40 text-foreground/80 text-[10px] font-semibold tracking-wide">
+              <BookOpen className="w-3 h-3" /> {note.course}
+            </span>
+          )}
+        </div>
 
-        <div className="flex items-center justify-between text-[11px] text-muted-foreground mb-3">
-          <span className="truncate">by {note.uploadedBy}</span>
-          <span className="flex items-center gap-1"><Eye className="w-3 h-3" /> {note.views}</span>
+        <div className="flex items-center justify-between gap-2 text-[11px] text-muted-foreground mb-3">
+          <div className="flex items-center gap-2 min-w-0">
+            <UserAvatar
+              name={note.uploadedBy}
+              photoUrl={note.uploadedByAvatarUrl}
+              className="w-6 h-6"
+              textClass="text-[10px]"
+            />
+            <div className="min-w-0">
+              <div className="font-medium text-foreground truncate">{note.uploadedBy}</div>
+              <div className="flex items-center gap-1.5 truncate">
+                {note.uploadedByDepartment && (
+                  <span className="truncate">{abbr(note.uploadedByDepartment)}</span>
+                )}
+                {rank && <RankBadge rank={rank} />}
+              </div>
+            </div>
+          </div>
+          <span className="flex items-center gap-1 shrink-0"><Eye className="w-3 h-3" /> {note.views}</span>
         </div>
 
         {note.uploadedByStudentId && (
