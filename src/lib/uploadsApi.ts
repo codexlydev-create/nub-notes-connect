@@ -15,6 +15,12 @@ export const uploadsApi = {
       body: input,
       auth: true,
     }),
+  presignAvatar: (input: { fileName: string; fileType: string; fileSize?: number }) =>
+    api<PresignResponse>("/api/uploads/avatar-upload-url", {
+      method: "POST",
+      body: input,
+      auth: true,
+    }),
   saveFile: (data: {
     title: string;
     description?: string;
