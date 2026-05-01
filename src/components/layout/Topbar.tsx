@@ -3,6 +3,7 @@ import { useTheme } from "@/context/ThemeContext";
 import { useAuth } from "@/context/AuthContext";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
+import UserAvatar from "@/components/UserAvatar";
 
 export default function Topbar({ onToggleSidebar }: { onToggleSidebar: () => void }) {
   const { theme, toggle } = useTheme();
@@ -36,9 +37,7 @@ export default function Topbar({ onToggleSidebar }: { onToggleSidebar: () => voi
 
           {user ? (
             <Link to="/dashboard" className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-muted transition-colors">
-              <div className="w-8 h-8 rounded-full bg-gradient-primary flex items-center justify-center text-primary-foreground text-xs font-bold">
-                {user.name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
-              </div>
+              <UserAvatar name={user.name} photoUrl={user.avatarUrl} className="w-8 h-8" textClass="text-xs" />
               <div className="hidden sm:block text-sm font-medium">{user.name.split(" ")[0]}</div>
             </Link>
           ) : (
