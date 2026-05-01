@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, PutObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 const {
@@ -43,4 +43,24 @@ export async function presignPutUrl(key, contentType, expiresIn = 60 * 5) {
 export function publicUrlFor(key) {
   if (!R2_PUBLIC_URL) return "";
   return `${R2_PUBLIC_URL.replace(/\/$/, "")}/${key}`;
+}
+
+/** Download an object from R2 as a Buffer. */
+export async function getObjectBuffer(key) {
+  const cmd = new GetObjectCommand({ Bucket: R2_BUCKET_NAME, Key: key });
+  const res = await r2Client().send(cmd);
+  const chunks = [];
+  for await (const chunk of res.Body) chunks.push(chunk);
+  return Buffer.concat(chunks);
+}
+
+/** Upload a Buffer back to R2 (server-side). */
+export async function putObjectBuffer(key, buffer, contentType) {
+  const cmd = new PutObjectCommand({
+    Bucket: R2_BUCKET_NAME,
+    Key: key,
+    Body: buffer,
+    ContentType: contentType,
+  });
+  await r2Client().send(cmd);
 }
