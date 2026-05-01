@@ -11,6 +11,8 @@ export interface Note {
   uploadedBy: string;
   uploadedById: string;
   uploadedByStudentId?: string;
+  uploadedByDepartment?: string;
+  uploadedByAvatarUrl?: string;
   views: number;
   likes: number;
   dislikes: number;
@@ -29,6 +31,8 @@ export interface User {
   studentId: string;
   department?: string;
   avatar?: string;
+  avatarUrl?: string;
+  avatarKey?: string;
   role?: "Contributor" | "Active Uploader";
   emailVerified?: boolean;
   pendingEmail?: string;

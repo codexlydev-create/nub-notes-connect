@@ -28,6 +28,7 @@ export default function Auth({ mode: initial = "login" as Mode }: { mode?: Mode 
   const [loading, setLoading] = useState(false);
   const [pendingEmail, setPendingEmail] = useState<string>("");
   const [departments, setDepartments] = useState<string[]>(SEED_DEPTS);
+  const [customDept, setCustomDept] = useState("");
 
   useEffect(() => {
     taxonomyApi.list().then((t) => setDepartments(t.departments)).catch(() => {});
@@ -44,10 +45,18 @@ export default function Auth({ mode: initial = "login" as Mode }: { mode?: Mode 
         toast.success("Welcome back!");
         navigate("/dashboard");
       } else if (mode === "register") {
-        const parsed = registerSchema.safeParse(form);
+        const isOther = form.department === "__other__";
+        const finalDept = isOther ? customDept.trim() : form.department;
+        if (isOther && !finalDept) {
+          toast.error("Please enter your department name");
+          return;
+        }
+        const parsed = registerSchema.safeParse({ ...form, department: finalDept });
         if (!parsed.success) { toast.error(parsed.error.errors[0].message); return; }
         await beginRegister({ name: form.name, email: form.email, studentId: form.studentId, password: form.password });
         setPendingEmail(form.email);
+        // Stash the resolved department for the next step
+        setForm((f) => ({ ...f, department: finalDept }));
         toast.success(`OTP sent to ${form.email}`);
         setMode("verify");
       } else if (mode === "verify") {
@@ -77,11 +86,11 @@ export default function Auth({ mode: initial = "login" as Mode }: { mode?: Mode 
   };
 
   return (
-    <div className="min-h-[80vh] flex items-center justify-center">
+    <div className="min-h-[calc(100vh-7rem)] md:min-h-[80vh] flex items-center justify-center px-2 py-6">
       <div className="w-full max-w-md">
         <motion.div
           initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
-          className="rounded-3xl bg-card border border-border shadow-elegant p-8"
+          className="rounded-3xl bg-card border border-border shadow-elegant p-6 sm:p-8"
         >
           <div className="flex items-center gap-3 mb-6">
             <div className="w-11 h-11 rounded-2xl bg-gradient-primary flex items-center justify-center shadow-elegant">
@@ -107,7 +116,17 @@ export default function Auth({ mode: initial = "login" as Mode }: { mode?: Mode 
                   <SelectField icon={Building2} value={form.department} onChange={(v) => set("department", v)}>
                     <option value="">Select your department</option>
                     {departments.map((d) => <option key={d} value={d}>{d}</option>)}
+                    <option value="__other__">Others (enter manually)</option>
                   </SelectField>
+                  {form.department === "__other__" && (
+                    <input
+                      value={customDept}
+                      onChange={(e) => setCustomDept(e.target.value)}
+                      placeholder="Enter your department"
+                      maxLength={120}
+                      className="w-full px-4 py-3 rounded-xl border border-border bg-background text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
+                    />
+                  )}
                 </motion.div>
               )}
             </AnimatePresence>

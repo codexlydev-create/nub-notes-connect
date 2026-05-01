@@ -44,7 +44,7 @@ export const notesApi = {
 export const contributorsApi = {
   list: () =>
     api<{
-      items: Array<{ id: string; name: string; studentId: string; uploads: number; totalViews: number; totalLikes: number; totalDislikes: number }>;
+      items: Array<{ id: string; name: string; studentId: string; department?: string; avatarUrl?: string; uploads: number; totalViews: number; totalLikes: number; totalDislikes: number }>;
     }>("/api/users/contributors"),
 };
 

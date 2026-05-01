@@ -17,7 +17,9 @@ interface AuthCtx {
   sendResetOtp: (email: string) => Promise<void>;
   /** Verify the reset OTP and set the new password. */
   resetPassword: (email: string, otp: string, newPassword: string) => Promise<void>;
-  updateProfile: (patch: { name?: string; studentId?: string; department?: string }) => Promise<User>;
+  updateProfile: (patch: { name?: string; studentId?: string; department?: string; avatarUrl?: string; avatarKey?: string }) => Promise<User>;
+  /** Remove the user's avatar. */
+  deleteAvatar: () => Promise<User>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   /** Request OTP to a NEW email; the user keeps using their old email until verified. */
   requestEmailChange: (newEmail: string) => Promise<void>;
@@ -122,6 +124,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return r.user;
   };
 
+  const deleteAvatar: AuthCtx["deleteAvatar"] = async () => {
+    const r = await api<{ user: User }>("/api/users/me/avatar", {
+      method: "DELETE", auth: true,
+    });
+    setUser(r.user);
+    return r.user;
+  };
+
   const changePassword: AuthCtx["changePassword"] = async (cur, next) => {
     await api("/api/auth/change-password", {
       method: "POST", body: { currentPassword: cur, newPassword: next }, auth: true,
@@ -146,7 +156,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     <Ctx.Provider
       value={{
         user, loading, login, beginRegister, completeRegister, resendOtp, logout,
-        sendResetOtp, resetPassword, updateProfile, changePassword,
+        sendResetOtp, resetPassword, updateProfile, deleteAvatar, changePassword,
         requestEmailChange, confirmEmailChange, refresh,
       }}
     >

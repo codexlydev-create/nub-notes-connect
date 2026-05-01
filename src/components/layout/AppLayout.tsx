@@ -31,24 +31,30 @@ export default function AppLayout() {
       {/* Mobile sidebar */}
       <AnimatePresence>
         {mobileOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="md:hidden fixed inset-0 z-50 bg-background/60 backdrop-blur-sm"
-            onClick={() => setMobileOpen(false)}
-          >
+          <>
+            {/* Backdrop — clicking anywhere outside the drawer closes it. */}
             <motion.div
-              initial={{ x: -260 }}
+              key="backdrop"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="md:hidden fixed inset-0 z-40 bg-background/60 backdrop-blur-sm"
+              onClick={() => setMobileOpen(false)}
+              aria-label="Close sidebar"
+            />
+            {/* Drawer panel — fixed width on the left, on top of backdrop. */}
+            <motion.div
+              key="drawer"
+              initial={{ x: -280 }}
               animate={{ x: 0 }}
-              exit={{ x: -260 }}
+              exit={{ x: -280 }}
               transition={{ type: "spring", damping: 28, stiffness: 260 }}
+              className="md:hidden fixed left-0 top-0 bottom-0 z-50 w-[260px] max-w-[85vw] shadow-elegant"
               onClick={(e) => e.stopPropagation()}
-              className="h-full"
             >
               <Sidebar collapsed={false} setCollapsed={() => setMobileOpen(false)} onNavigate={() => setMobileOpen(false)} />
             </motion.div>
-          </motion.div>
+          </>
         )}
       </AnimatePresence>
 

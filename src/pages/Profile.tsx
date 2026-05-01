@@ -1,14 +1,19 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Mail, IdCard, User as UserIcon, BadgeCheck, Lock, ShieldAlert, KeyRound, Eye, EyeOff, Building2 } from "lucide-react";
+import { Mail, IdCard, User as UserIcon, BadgeCheck, Lock, ShieldAlert, KeyRound, Eye, EyeOff, Building2, Camera, Trash2, Loader2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 import { taxonomyApi } from "@/lib/taxonomyApi";
 import { DEPARTMENTS } from "@/data/seed";
+import UserAvatar from "@/components/UserAvatar";
+import { uploadsApi, putToPresignedUrl } from "@/lib/uploadsApi";
+
+const AVATAR_MAX_BYTES = 1 * 1024 * 1024;
+const AVATAR_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 
 export default function Profile() {
-  const { user, loading: authLoading, updateProfile, changePassword, requestEmailChange, confirmEmailChange } = useAuth();
+  const { user, loading: authLoading, updateProfile, deleteAvatar, changePassword, requestEmailChange, confirmEmailChange } = useAuth();
   const navigate = useNavigate();
   const [form, setForm] = useState({ name: "", email: "", studentId: "", department: "" });
   const [departments, setDepartments] = useState<string[]>([...DEPARTMENTS].sort());
@@ -20,6 +25,8 @@ export default function Profile() {
   const [pw, setPw] = useState({ current: "", next: "", confirm: "" });
   const [showPw, setShowPw] = useState(false);
   const [pwSaving, setPwSaving] = useState(false);
+  const [photoBusy, setPhotoBusy] = useState(false);
+  const photoRef = useRef<HTMLInputElement>(null);
 
   // Only redirect once auth has finished hydrating — otherwise a refresh
   // briefly shows `user === null` and kicks the user to /login.
@@ -123,7 +130,44 @@ export default function Profile() {
     }
   };
 
-  const initials = user.name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
+  async function handlePickPhoto(file: File | null) {
+    if (!file || !user) return;
+    if (!AVATAR_TYPES.has(file.type)) {
+      return toast.error("Please choose a JPG, PNG or WebP image");
+    }
+    if (file.size > AVATAR_MAX_BYTES) {
+      return toast.error("Image must be 1 MB or smaller");
+    }
+    setPhotoBusy(true);
+    try {
+      const { uploadUrl, fileUrl, key } = await uploadsApi.presignAvatar({
+        fileName: file.name,
+        fileType: file.type,
+        fileSize: file.size,
+      });
+      await putToPresignedUrl(uploadUrl, file);
+      await updateProfile({ avatarUrl: fileUrl, avatarKey: key });
+      toast.success("Profile photo updated");
+    } catch (err: any) {
+      toast.error(err?.message || "Could not upload photo");
+    } finally {
+      setPhotoBusy(false);
+      if (photoRef.current) photoRef.current.value = "";
+    }
+  }
+
+  async function handleDeletePhoto() {
+    if (!user?.avatarUrl) return;
+    setPhotoBusy(true);
+    try {
+      await deleteAvatar();
+      toast.success("Profile photo removed");
+    } catch (err: any) {
+      toast.error(err?.message || "Could not remove photo");
+    } finally {
+      setPhotoBusy(false);
+    }
+  }
 
   return (
     <div className="max-w-3xl mx-auto">
@@ -131,11 +175,34 @@ export default function Profile() {
         initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
         className="rounded-3xl bg-card border border-border shadow-elegant p-6 md:p-8 mb-6"
       >
-        <div className="flex items-center gap-5">
-          <div className="w-20 h-20 rounded-2xl bg-gradient-primary text-primary-foreground flex items-center justify-center text-2xl font-bold shadow-elegant">
-            {initials}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5">
+          <div className="relative shrink-0">
+            <UserAvatar
+              name={user.name}
+              photoUrl={user.avatarUrl}
+              rounded="2xl"
+              className="w-20 h-20 shadow-elegant"
+              textClass="text-2xl"
+            />
+            <button
+              type="button"
+              onClick={() => photoRef.current?.click()}
+              disabled={photoBusy}
+              className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-primary text-primary-foreground border-2 border-card flex items-center justify-center shadow-soft hover:opacity-90 disabled:opacity-60"
+              aria-label="Change profile photo"
+              title="Change profile photo"
+            >
+              {photoBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Camera className="w-3.5 h-3.5" />}
+            </button>
+            <input
+              ref={photoRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              className="hidden"
+              onChange={(e) => handlePickPhoto(e.target.files?.[0] ?? null)}
+            />
           </div>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <h1 className="text-2xl md:text-3xl font-bold truncate">{user.name}</h1>
             <div className="flex flex-wrap items-center gap-2 mt-1 text-sm text-muted-foreground">
               <span className="truncate">{user.email}</span>
@@ -148,6 +215,27 @@ export default function Profile() {
                   <ShieldAlert className="w-3 h-3" /> Unverified
                 </span>
               )}
+            </div>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => photoRef.current?.click()}
+                disabled={photoBusy}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs font-semibold hover:bg-muted disabled:opacity-60"
+              >
+                <Camera className="w-3.5 h-3.5" /> {user.avatarUrl ? "Change photo" : "Upload photo"}
+              </button>
+              {user.avatarUrl && (
+                <button
+                  type="button"
+                  onClick={handleDeletePhoto}
+                  disabled={photoBusy}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs font-semibold text-destructive hover:bg-destructive/10 disabled:opacity-60"
+                >
+                  <Trash2 className="w-3.5 h-3.5" /> Remove
+                </button>
+              )}
+              <span className="text-[11px] text-muted-foreground">JPG/PNG/WebP · max 1 MB · 400×400+ recommended</span>
             </div>
           </div>
         </div>

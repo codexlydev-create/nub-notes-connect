@@ -16,6 +16,8 @@ router.get("/contributors", async (_req, res, next) => {
           _id: "$uploadedBy.id",
           name: { $first: "$uploadedBy.name" },
           studentId: { $first: "$uploadedBy.studentId" },
+          department: { $first: "$uploadedBy.department" },
+          avatarUrl: { $first: "$uploadedBy.avatarUrl" },
           uploads: { $sum: 1 },
           totalViews: { $sum: "$views" },
           totalLikes: { $sum: "$likes" },
@@ -25,18 +27,32 @@ router.get("/contributors", async (_req, res, next) => {
       { $sort: { uploads: -1, totalLikes: -1 } },
       { $limit: 50 },
     ]);
-    // Backfill studentId from User doc if missing on note
-    const missing = rows.filter((r) => !r.studentId).map((r) => r._id).filter(Boolean);
+    // Backfill studentId / department / avatar from User doc if missing on note
+    const missing = rows
+      .filter((r) => !r.studentId || !r.department || !r.avatarUrl)
+      .map((r) => r._id)
+      .filter(Boolean);
     if (missing.length) {
-      const users = await User.find({ _id: { $in: missing } }).select("_id studentId");
-      const map = new Map(users.map((u) => [u._id.toString(), u.studentId || ""]));
-      rows.forEach((r) => { if (!r.studentId && r._id) r.studentId = map.get(r._id.toString()) || ""; });
+      const users = await User.find({ _id: { $in: missing } }).select(
+        "_id studentId department avatarUrl"
+      );
+      const map = new Map(users.map((u) => [u._id.toString(), u]));
+      rows.forEach((r) => {
+        if (!r._id) return;
+        const u = map.get(r._id.toString());
+        if (!u) return;
+        if (!r.studentId) r.studentId = u.studentId || "";
+        if (!r.department) r.department = u.department || "";
+        if (!r.avatarUrl) r.avatarUrl = u.avatarUrl || "";
+      });
     }
     res.json({
       items: rows.map((r) => ({
         id: r._id?.toString(),
         name: r.name,
         studentId: r.studentId || "",
+        department: r.department || "",
+        avatarUrl: r.avatarUrl || "",
         uploads: r.uploads,
         totalViews: r.totalViews,
         totalLikes: r.totalLikes,
@@ -55,8 +71,19 @@ router.patch("/me", requireAuth, async (req, res, next) => {
       department: z.string().max(100).optional(),
       bio: z.string().max(500).optional(),
       avatarUrl: z.string().url().max(500).optional().or(z.literal("")),
+      avatarKey: z.string().max(512).optional().or(z.literal("")),
     });
     Object.assign(req.user, schema.parse(req.body));
+    await req.user.save();
+    res.json({ user: req.user.toPublic() });
+  } catch (e) { next(e); }
+});
+
+/* Delete avatar */
+router.delete("/me/avatar", requireAuth, async (req, res, next) => {
+  try {
+    req.user.avatarUrl = "";
+    req.user.avatarKey = "";
     await req.user.save();
     res.json({ user: req.user.toPublic() });
   } catch (e) { next(e); }

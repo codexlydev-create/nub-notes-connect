@@ -4,10 +4,18 @@ import path from "node:path";
 import { z } from "zod";
 import { requireAuth } from "../lib/auth.js";
 import Note from "../models/Note.js";
-import { presignPutUrl, publicUrlFor } from "../lib/r2.js";
+import {
+  presignPutUrl,
+  publicUrlFor,
+  getObjectBuffer,
+  putObjectBuffer,
+} from "../lib/r2.js";
+import { watermarkPdfBuffer } from "../lib/watermark.js";
 
 const router = express.Router();
 const MAX_BYTES = 50 * 1024 * 1024; // 50MB
+const AVATAR_MAX_BYTES = 1 * 1024 * 1024; // 1MB
+const AVATAR_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 
 /**
  * POST /api/uploads/generate-upload-url
@@ -42,8 +50,41 @@ router.post("/generate-upload-url", requireAuth, async (req, res, next) => {
 });
 
 /**
+ * POST /api/uploads/avatar-upload-url
+ * Body: { fileName, fileType, fileSize? }
+ * Returns: { uploadUrl, fileUrl, key, expiresIn }
+ */
+router.post("/avatar-upload-url", requireAuth, async (req, res, next) => {
+  try {
+    const schema = z.object({
+      fileName: z.string().min(1).max(255),
+      fileType: z.string().refine((t) => AVATAR_TYPES.has(t), {
+        message: "Only JPG, PNG or WebP images are allowed",
+      }),
+      fileSize: z.coerce.number().int().positive().max(AVATAR_MAX_BYTES).optional(),
+    });
+    const { fileName, fileType } = schema.parse(req.body);
+    const safeBase = path
+      .basename(fileName)
+      .replace(/[^a-zA-Z0-9._-]+/g, "_")
+      .slice(0, 80);
+    const ext = path.extname(safeBase).toLowerCase() || ".jpg";
+    const key = `avatars/${req.user._id.toString()}/${Date.now()}-${crypto
+      .randomBytes(4)
+      .toString("hex")}${ext}`;
+    const uploadUrl = await presignPutUrl(key, fileType, 300);
+    const fileUrl = publicUrlFor(key);
+    res.json({ uploadUrl, fileUrl, key, expiresIn: 300 });
+  } catch (e) {
+    next(e);
+  }
+});
+
+/**
  * POST /api/uploads/save-file
  * Persists note metadata after the file is uploaded directly to R2.
+ * Server-side: downloads the raw PDF, stamps a per-uploader watermark on every
+ * page, and re-uploads to R2 so every preview/download is permanently watermarked.
  */
 router.post("/save-file", requireAuth, async (req, res, next) => {
   try {
@@ -62,6 +103,28 @@ router.post("/save-file", requireAuth, async (req, res, next) => {
     });
     const data = schema.parse(req.body);
 
+    let finalUrl = data.fileUrl;
+    let finalKey = data.fileKey || "";
+    let finalSize = data.fileSize;
+    let finalPageCount = data.pageCount;
+
+    // Watermark the PDF in place using the original key.
+    if (finalKey) {
+      try {
+        const raw = await getObjectBuffer(finalKey);
+        const { buffer: stamped, pageCount } = await watermarkPdfBuffer(raw, {
+          uploaderName: req.user.name,
+          siteUrl: "diunotes.com",
+        });
+        await putObjectBuffer(finalKey, stamped, "application/pdf");
+        finalSize = stamped.length;
+        finalPageCount = pageCount;
+      } catch (err) {
+        // If watermarking fails, fall back to the original file but log it.
+        console.error("watermarkPdfBuffer failed", err?.message || err);
+      }
+    }
+
     const note = await Note.create({
       title: data.title,
       description: data.description,
@@ -71,14 +134,16 @@ router.post("/save-file", requireAuth, async (req, res, next) => {
       type: data.type,
       fileName: data.fileName,
       fileMime: "application/pdf",
-      fileSize: data.fileSize,
-      fileUrl: data.fileUrl,
-      fileKey: data.fileKey || "",
-      pageCount: data.pageCount,
+      fileSize: finalSize,
+      fileUrl: finalUrl,
+      fileKey: finalKey,
+      pageCount: finalPageCount,
       uploadedBy: {
         id: req.user._id,
         name: req.user.name,
         studentId: req.user.studentId || "",
+        department: req.user.department || "",
+        avatarUrl: req.user.avatarUrl || "",
       },
     });
 
