@@ -4,13 +4,16 @@ import { Search, FileText, Eye, ThumbsUp, ThumbsDown, Users, Crown, Medal, Award
 import { Skeleton } from "@/components/ui/skeleton";
 import { contributorsApi } from "@/lib/notesApi";
 import { toast } from "sonner";
+import UserAvatar from "@/components/UserAvatar";
+import { abbr } from "@/lib/department";
 
-type Row = { id: string; name: string; studentId: string; uploads: number; totalViews: number; totalLikes: number; totalDislikes: number };
+type Row = { id: string; name: string; studentId: string; department?: string; avatarUrl?: string; uploads: number; totalViews: number; totalLikes: number; totalDislikes: number };
 type SortKey = "rank" | "notes" | "likes" | "views" | "dislikes";
 
 export default function Contributors() {
   const [q, setQ] = useState("");
   const [sort, setSort] = useState<SortKey>("rank");
+  const [deptFilter, setDeptFilter] = useState<string>("");
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -25,10 +28,13 @@ export default function Contributors() {
 
   const filtered = useMemo(() => {
     const term = q.toLowerCase().trim();
-    const list = rows.filter((c) =>
-      c.name.toLowerCase().includes(term) ||
-      (c.studentId || "").toLowerCase().includes(term)
-    );
+    const list = rows.filter((c) => {
+      const matchesText =
+        c.name.toLowerCase().includes(term) ||
+        (c.studentId || "").toLowerCase().includes(term);
+      const matchesDept = !deptFilter || (c.department || "") === deptFilter;
+      return matchesText && matchesDept;
+    });
     return [...list].sort((a, b) => {
       if (sort === "notes") return b.uploads - a.uploads;
       if (sort === "likes") return b.totalLikes - a.totalLikes;
@@ -36,7 +42,13 @@ export default function Contributors() {
       if (sort === "views") return b.totalViews - a.totalViews;
       return b.uploads - a.uploads || b.totalLikes - a.totalLikes;
     });
-  }, [rows, q, sort]);
+  }, [rows, q, sort, deptFilter]);
+
+  const departments = useMemo(() => {
+    const set = new Set<string>();
+    rows.forEach((r) => { if (r.department) set.add(r.department); });
+    return [...set].sort();
+  }, [rows]);
 
   const summary = [
     { l: "Total Contributors", v: rows.length, icon: Users },
@@ -72,11 +84,19 @@ export default function Contributors() {
         ))}
       </div>
 
-      <div className="flex flex-col md:flex-row gap-3 mb-5">
+      <div className="flex flex-col md:flex-row gap-3 mb-3">
         <div className="relative flex-1">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search by name or student ID…" className="w-full pl-10 pr-4 py-3 rounded-xl border border-border bg-card text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15" />
         </div>
+        <select
+          value={deptFilter}
+          onChange={(e) => setDeptFilter(e.target.value)}
+          className="px-4 py-3 rounded-xl border border-border bg-card text-sm font-medium outline-none focus:border-primary"
+        >
+          <option value="">All Departments</option>
+          {departments.map((d) => <option key={d} value={d}>{abbr(d)} — {d}</option>)}
+        </select>
         <select value={sort} onChange={(e) => setSort(e.target.value as SortKey)} className="px-4 py-3 rounded-xl border border-border bg-card text-sm font-medium outline-none focus:border-primary">
           <option value="rank">Sort: Rank</option>
           <option value="notes">Sort: Notes</option>
@@ -85,10 +105,15 @@ export default function Contributors() {
           <option value="views">Sort: Views</option>
         </select>
       </div>
+      <div className="text-sm text-muted-foreground mb-3">
+        Showing <span className="font-semibold text-foreground">{filtered.length}</span> of {rows.length} contributors
+        {deptFilter && <> in <span className="font-semibold text-foreground">{abbr(deptFilter)}</span></>}
+      </div>
 
       <div className="rounded-2xl bg-card border border-border shadow-card overflow-hidden">
-        <div className="hidden md:grid grid-cols-[60px_1.4fr_1.1fr_70px_80px_70px_80px] items-center gap-4 px-5 py-3 border-b border-border text-[11px] uppercase tracking-wider text-muted-foreground font-semibold bg-muted/30">
-          <div>Rank</div><div>Contributor</div><div>Student ID</div><div>Notes</div><div>Views</div><div>Likes</div><div>Dislikes</div>
+        <div className="max-h-[70vh] overflow-y-auto">
+        <div className="hidden md:grid grid-cols-[60px_1.4fr_1.1fr_80px_70px_80px_70px_80px] items-center gap-4 px-5 py-3 border-b border-border text-[11px] uppercase tracking-wider text-muted-foreground font-semibold bg-muted/30 sticky top-0 z-10 bg-card">
+          <div>Rank</div><div>Contributor</div><div>Student ID</div><div>Dept</div><div>Notes</div><div>Views</div><div>Likes</div><div>Dislikes</div>
         </div>
         {loading ? (
           Array.from({ length: 6 }).map((_, i) => (
@@ -107,16 +132,15 @@ export default function Contributors() {
         ) : (
           filtered.map((c, i) => (
             <motion.div key={c.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}
-              className="grid grid-cols-[48px_1fr_auto] md:grid-cols-[60px_1.4fr_1.1fr_70px_80px_70px_80px] items-center gap-3 md:gap-4 px-4 md:px-5 py-4 border-b border-border last:border-b-0 hover:bg-muted/30">
+              className="grid grid-cols-[48px_1fr_auto] md:grid-cols-[60px_1.4fr_1.1fr_80px_70px_80px_70px_80px] items-center gap-3 md:gap-4 px-4 md:px-5 py-4 border-b border-border last:border-b-0 hover:bg-muted/30">
               <RankBadge rank={i + 1} />
               <div className="flex items-center gap-3 min-w-0">
-                <div className="w-10 h-10 rounded-full bg-gradient-primary text-primary-foreground flex items-center justify-center font-bold text-sm shrink-0">
-                  {c.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}
-                </div>
+                <UserAvatar name={c.name} photoUrl={c.avatarUrl} className="w-10 h-10" />
                 <div className="min-w-0">
                   <div className="font-semibold truncate">{c.name}</div>
                   <div className="text-xs text-muted-foreground truncate md:hidden">
                     {c.studentId && <span className="font-mono">{c.studentId} · </span>}
+                    {c.department && <span>{abbr(c.department)} · </span>}
                     {c.uploads} notes · {c.totalLikes} likes · {c.totalDislikes} dislikes
                   </div>
                 </div>
@@ -139,6 +163,16 @@ export default function Contributors() {
                   <span className="text-xs text-muted-foreground">—</span>
                 )}
               </div>
+              <div className="hidden md:block">
+                {c.department ? (
+                  <span
+                    className="px-2 py-0.5 rounded-md bg-muted text-[10px] font-bold tracking-wide"
+                    title={c.department}
+                  >
+                    {abbr(c.department)}
+                  </span>
+                ) : <span className="text-xs text-muted-foreground">—</span>}
+              </div>
               <div className="hidden md:block text-sm font-medium">{c.uploads}</div>
               <div className="hidden md:block text-sm">{c.totalViews.toLocaleString()}</div>
               <div className="hidden md:block text-sm">{c.totalLikes.toLocaleString()}</div>
@@ -157,6 +191,7 @@ export default function Contributors() {
             </motion.div>
           ))
         )}
+        </div>
       </div>
     </div>
   );
