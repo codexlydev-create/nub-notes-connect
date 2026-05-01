@@ -8,7 +8,8 @@ import { useState } from "react";
 import type { Note } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import UserAvatar from "@/components/UserAvatar";
-import { useContributorRank } from "@/hooks/useContributorRanks";
+import { useContributorRank, RankBadge } from "@/hooks/useContributorRanks";
+import { abbr } from "@/lib/department";
 
 type Reactions = { liked: boolean; disliked: boolean; saved: boolean };
 
