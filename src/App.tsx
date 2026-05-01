@@ -18,6 +18,7 @@ import Profile from "./pages/Profile";
 import Upload from "./pages/Upload";
 import { AuthProvider } from "./context/AuthContext";
 import { ThemeProvider } from "./context/ThemeContext";
+import { ContributorRankProvider } from "./hooks/useContributorRanks";
 
 const queryClient = new QueryClient();
 
@@ -26,6 +27,7 @@ const App = () => {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <AuthProvider>
+          <ContributorRankProvider>
           <TooltipProvider>
             <Toaster />
             <Sonner />
@@ -49,6 +51,7 @@ const App = () => {
               </Routes>
             </BrowserRouter>
           </TooltipProvider>
+          </ContributorRankProvider>
         </AuthProvider>
       </ThemeProvider>
     </QueryClientProvider>
