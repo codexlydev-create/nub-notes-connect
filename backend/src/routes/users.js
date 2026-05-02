@@ -27,23 +27,22 @@ router.get("/contributors", async (_req, res, next) => {
       { $sort: { uploads: -1, totalLikes: -1 } },
       { $limit: 50 },
     ]);
-    // Backfill studentId / department / avatar from User doc if missing on note
-    const missing = rows
-      .filter((r) => !r.studentId || !r.department || !r.avatarUrl)
-      .map((r) => r._id)
-      .filter(Boolean);
-    if (missing.length) {
-      const users = await User.find({ _id: { $in: missing } }).select(
-        "_id studentId department avatarUrl"
+    // Always overlay the live User profile so changes (avatar, name, dept)
+    // are reflected immediately, regardless of stale snapshots on notes.
+    const ids = rows.map((r) => r._id).filter(Boolean);
+    if (ids.length) {
+      const users = await User.find({ _id: { $in: ids } }).select(
+        "_id name studentId department avatarUrl"
       );
       const map = new Map(users.map((u) => [u._id.toString(), u]));
       rows.forEach((r) => {
         if (!r._id) return;
         const u = map.get(r._id.toString());
         if (!u) return;
-        if (!r.studentId) r.studentId = u.studentId || "";
-        if (!r.department) r.department = u.department || "";
-        if (!r.avatarUrl) r.avatarUrl = u.avatarUrl || "";
+        r.name = u.name || r.name;
+        r.studentId = u.studentId || r.studentId || "";
+        r.department = u.department || r.department || "";
+        r.avatarUrl = u.avatarUrl ?? "";
       });
     }
     res.json({
