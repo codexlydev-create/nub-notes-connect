@@ -12,7 +12,6 @@ const noteSchema = new mongoose.Schema(
     fileName: { type: String, default: "" },
     fileMime: { type: String, default: "application/pdf" },
     fileSize: { type: Number, default: 0 },
-    filePath: { type: String, default: "" }, // relative to uploads/
     fileUrl: { type: String, default: "" },  // public URL (Cloudflare R2)
     fileKey: { type: String, default: "" },  // object key in R2
     pageCount: { type: Number, default: 0 },
