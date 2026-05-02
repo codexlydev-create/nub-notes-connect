@@ -73,8 +73,20 @@ router.patch("/me", requireAuth, async (req, res, next) => {
       avatarUrl: z.string().url().max(500).optional().or(z.literal("")),
       avatarKey: z.string().max(512).optional().or(z.literal("")),
     });
-    Object.assign(req.user, schema.parse(req.body));
+    const patch = schema.parse(req.body);
+    Object.assign(req.user, patch);
     await req.user.save();
+    // Propagate identity changes to the snapshot stored on every note the
+    // user has uploaded, so cards across the app reflect the latest avatar,
+    // name, student ID, and department.
+    const noteUpdate = {};
+    if (patch.avatarUrl !== undefined) noteUpdate["uploadedBy.avatarUrl"] = patch.avatarUrl;
+    if (patch.name !== undefined) noteUpdate["uploadedBy.name"] = patch.name;
+    if (patch.studentId !== undefined) noteUpdate["uploadedBy.studentId"] = patch.studentId;
+    if (patch.department !== undefined) noteUpdate["uploadedBy.department"] = patch.department;
+    if (Object.keys(noteUpdate).length) {
+      Note.updateMany({ "uploadedBy.id": req.user._id }, { $set: noteUpdate }).catch(() => {});
+    }
     res.json({ user: req.user.toPublic() });
   } catch (e) { next(e); }
 });
@@ -85,6 +97,11 @@ router.delete("/me/avatar", requireAuth, async (req, res, next) => {
     req.user.avatarUrl = "";
     req.user.avatarKey = "";
     await req.user.save();
+    // Clear the avatar snapshot on all notes uploaded by this user.
+    Note.updateMany(
+      { "uploadedBy.id": req.user._id },
+      { $set: { "uploadedBy.avatarUrl": "" } }
+    ).catch(() => {});
     res.json({ user: req.user.toPublic() });
   } catch (e) { next(e); }
 });
