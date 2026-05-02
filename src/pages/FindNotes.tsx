@@ -61,9 +61,16 @@ export default function FindNotes() {
         <EmptyState />
       ) : (
         <>
-          <motion.div layout className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+          <motion.div
+            layout
+            className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-4 sm:gap-5 [column-fill:_balance]"
+          >
             <AnimatePresence mode="popLayout">
-              {notes.map((n) => <NoteCard key={n.id} note={n} />)}
+              {notes.map((n) => (
+                <div key={n.id} className="mb-4 sm:mb-5 break-inside-avoid">
+                  <NoteCard note={n} />
+                </div>
+              ))}
             </AnimatePresence>
           </motion.div>
           {totalPages > 1 && <Pager page={page} totalPages={totalPages} onPage={setPage} />}
