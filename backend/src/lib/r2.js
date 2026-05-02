@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 const {
@@ -63,4 +63,14 @@ export async function putObjectBuffer(key, buffer, contentType) {
     ContentType: contentType,
   });
   await r2Client().send(cmd);
+}
+
+/** Delete an object from R2. Swallows errors so callers can fire-and-forget. */
+export async function deleteObject(key) {
+  if (!key) return;
+  try {
+    await r2Client().send(new DeleteObjectCommand({ Bucket: R2_BUCKET_NAME, Key: key }));
+  } catch (e) {
+    console.error("r2 deleteObject failed", key, e?.message || e);
+  }
 }

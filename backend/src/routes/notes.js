@@ -1,13 +1,23 @@
 import express from "express";
-import path from "node:path";
-import fs from "node:fs";
 import mongoose from "mongoose";
 import { z } from "zod";
 import Note from "../models/Note.js";
 import Interaction from "../models/Interaction.js";
 import View from "../models/View.js";
 import { requireAuth, optionalAuth } from "../lib/auth.js";
-import { uploadPdf, UPLOAD_DIR } from "../lib/upload.js";
+import multer from "multer";
+import { putObjectBuffer, publicUrlFor, deleteObject } from "../lib/r2.js";
+import crypto from "node:crypto";
+
+const MAX_MB = Number(process.env.MAX_UPLOAD_MB || 50);
+const uploadPdf = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: MAX_MB * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    if (file.mimetype === "application/pdf") return cb(null, true);
+    cb(new Error("Only PDF files are allowed"));
+  },
+});
 
 const router = express.Router();
 const isObjectId = (s) => mongoose.isValidObjectId(s);
@@ -65,12 +75,7 @@ router.get("/:id/file", async (req, res, next) => {
     const note = await Note.findById(req.params.id);
     if (!note) return res.status(404).json({ error: "File not found" });
     if (note.fileUrl) return res.redirect(302, note.fileUrl);
-    if (!note.filePath) return res.status(404).json({ error: "File not found" });
-    const abs = path.join(UPLOAD_DIR, note.filePath);
-    if (!fs.existsSync(abs)) return res.status(404).json({ error: "File missing" });
-    res.setHeader("Content-Type", note.fileMime || "application/pdf");
-    res.setHeader("Content-Disposition", `inline; filename="${note.fileName || "note.pdf"}"`);
-    fs.createReadStream(abs).pipe(res);
+    return res.status(404).json({ error: "File not found" });
   } catch (e) { next(e); }
 });
 
@@ -88,17 +93,30 @@ router.post("/", requireAuth, uploadPdf.single("file"), async (req, res, next) =
     });
     const data = schema.parse(req.body);
     if (!req.file) return res.status(400).json({ error: "PDF file required" });
+    const safeBase = (req.file.originalname || "note.pdf")
+      .replace(/[^a-zA-Z0-9._-]+/g, "_")
+      .slice(0, 120);
+    const key = `notes/${req.user._id.toString()}/${Date.now()}-${crypto
+      .randomBytes(6)
+      .toString("hex")}-${safeBase}`;
+    await putObjectBuffer(key, req.file.buffer, "application/pdf");
     const note = await Note.create({
       ...data,
       fileName: req.file.originalname,
       fileMime: req.file.mimetype,
       fileSize: req.file.size,
-      filePath: req.file.filename,
-      uploadedBy: { id: req.user._id, name: req.user.name, studentId: req.user.studentId || "" },
+      fileKey: key,
+      fileUrl: publicUrlFor(key),
+      uploadedBy: {
+        id: req.user._id,
+        name: req.user.name,
+        studentId: req.user.studentId || "",
+        department: req.user.department || "",
+        avatarUrl: req.user.avatarUrl || "",
+      },
     });
     res.status(201).json({ note: note.toPublic() });
   } catch (e) {
-    if (req.file?.path) fs.unlink(req.file.path, () => {});
     next(e);
   }
 });
@@ -133,8 +151,9 @@ router.delete("/:id", requireAuth, async (req, res, next) => {
     if (!note) return res.status(404).json({ error: "Note not found" });
     if (note.uploadedBy.id.toString() !== req.user._id.toString())
       return res.status(403).json({ error: "Not your note" });
-    if (note.filePath) {
-      fs.unlink(path.join(UPLOAD_DIR, note.filePath), () => {});
+    if (note.fileKey) {
+      // fire-and-forget R2 delete
+      deleteObject(note.fileKey).catch(() => {});
     }
     await Promise.all([
       Interaction.deleteMany({ note: note._id }),
