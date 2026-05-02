@@ -111,8 +111,9 @@ export default function Contributors() {
       </div>
 
       <div className="rounded-2xl bg-card border border-border shadow-card overflow-hidden">
-        <div className="max-h-[70vh] overflow-y-auto">
-        <div className="hidden md:grid grid-cols-[60px_1.4fr_1.1fr_80px_70px_80px_70px_80px] items-center gap-4 px-5 py-3 border-b border-border text-[11px] uppercase tracking-wider text-muted-foreground font-semibold bg-muted/30 sticky top-0 z-10 bg-card">
+        <div className="max-h-[70vh] overflow-y-auto overflow-x-auto">
+        <div className="min-w-[820px] md:min-w-0">
+        <div className="grid grid-cols-[60px_1.4fr_1.1fr_80px_70px_80px_70px_80px] items-center gap-4 px-5 py-3 border-b border-border text-[11px] uppercase tracking-wider text-muted-foreground font-semibold bg-muted/30 sticky top-0 z-10 bg-card">
           <div>Rank</div><div>Contributor</div><div>Student ID</div><div>Dept</div><div>Notes</div><div>Views</div><div>Likes</div><div>Dislikes</div>
         </div>
         {loading ? (
@@ -120,11 +121,11 @@ export default function Contributors() {
             <div key={i} className="px-5 py-4 border-b border-border last:border-0 flex items-center gap-4">
               <Skeleton className="w-9 h-9 rounded-xl" />
               <Skeleton className="flex-1 h-5" />
-              <Skeleton className="hidden md:block w-24 h-4" />
-              <Skeleton className="hidden md:block w-12 h-4" />
-              <Skeleton className="hidden md:block w-12 h-4" />
-              <Skeleton className="hidden md:block w-12 h-4" />
-              <Skeleton className="hidden md:block w-12 h-4" />
+              <Skeleton className="w-24 h-4" />
+              <Skeleton className="w-12 h-4" />
+              <Skeleton className="w-12 h-4" />
+              <Skeleton className="w-12 h-4" />
+              <Skeleton className="w-12 h-4" />
             </div>
           ))
         ) : filtered.length === 0 ? (
@@ -132,20 +133,15 @@ export default function Contributors() {
         ) : (
           filtered.map((c, i) => (
             <motion.div key={c.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}
-              className="grid grid-cols-[48px_1fr_auto] md:grid-cols-[60px_1.4fr_1.1fr_80px_70px_80px_70px_80px] items-center gap-3 md:gap-4 px-4 md:px-5 py-4 border-b border-border last:border-b-0 hover:bg-muted/30">
+              className="grid grid-cols-[60px_1.4fr_1.1fr_80px_70px_80px_70px_80px] items-center gap-4 px-5 py-4 border-b border-border last:border-b-0 hover:bg-muted/30">
               <RankBadge rank={i + 1} />
               <div className="flex items-center gap-3 min-w-0">
                 <UserAvatar name={c.name} photoUrl={c.avatarUrl} className="w-10 h-10" />
                 <div className="min-w-0">
                   <div className="font-semibold truncate">{c.name}</div>
-                  <div className="text-xs text-muted-foreground truncate md:hidden">
-                    {c.studentId && <span className="font-mono">{c.studentId} · </span>}
-                    {c.department && <span>{abbr(c.department)} · </span>}
-                    {c.uploads} notes · {c.totalLikes} likes · {c.totalDislikes} dislikes
-                  </div>
                 </div>
               </div>
-              <div className="hidden md:flex items-center gap-2 min-w-0">
+              <div className="flex items-center gap-2 min-w-0">
                 {c.studentId ? (
                   <>
                     <span className="font-mono text-sm truncate">{c.studentId}</span>
@@ -163,7 +159,7 @@ export default function Contributors() {
                   <span className="text-xs text-muted-foreground">—</span>
                 )}
               </div>
-              <div className="hidden md:block">
+              <div>
                 {c.department ? (
                   <span
                     className="px-2 py-0.5 rounded-md bg-muted text-[10px] font-bold tracking-wide"
@@ -173,24 +169,14 @@ export default function Contributors() {
                   </span>
                 ) : <span className="text-xs text-muted-foreground">—</span>}
               </div>
-              <div className="hidden md:block text-sm font-medium">{c.uploads}</div>
-              <div className="hidden md:block text-sm">{c.totalViews.toLocaleString()}</div>
-              <div className="hidden md:block text-sm">{c.totalLikes.toLocaleString()}</div>
-              <div className="hidden md:block text-sm">{c.totalDislikes.toLocaleString()}</div>
-              {/* Mobile: copy button on right */}
-              {c.studentId && (
-                <button
-                  type="button"
-                  onClick={() => copyId(c.studentId)}
-                  className="md:hidden p-2 rounded-md hover:bg-muted transition-colors shrink-0"
-                  aria-label="Copy student ID"
-                >
-                  {copiedId === c.studentId ? <Check className="w-4 h-4 text-primary" /> : <Copy className="w-4 h-4 text-muted-foreground" />}
-                </button>
-              )}
+              <div className="text-sm font-medium">{c.uploads}</div>
+              <div className="text-sm">{c.totalViews.toLocaleString()}</div>
+              <div className="text-sm">{c.totalLikes.toLocaleString()}</div>
+              <div className="text-sm">{c.totalDislikes.toLocaleString()}</div>
             </motion.div>
           ))
         )}
+        </div>
         </div>
       </div>
     </div>
