@@ -1,18 +1,32 @@
-import { Component, ReactNode, useEffect, useRef, useState } from "react";
+import { Component, ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 import { Loader2, AlertCircle, ExternalLink } from "lucide-react";
+import pdfWorkerSrc from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
 
-// Use a CDN worker that matches the installed pdfjs-dist version. This avoids
-// having to copy the worker into /public and is the recommended setup for
-// react-pdf v9+.
-pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerSrc;
+
+const PDF_OPTIONS = {
+  cMapUrl: `https://unpkg.com/pdfjs-dist@${pdfjs.version}/cmaps/`,
+  cMapPacked: true,
+  standardFontDataUrl: `https://unpkg.com/pdfjs-dist@${pdfjs.version}/standard_fonts/`,
+  // Keep streaming/range enabled so large PDFs don't get loaded fully into memory.
+  disableAutoFetch: true,
+  disableStream: false,
+  disableRange: false,
+  isEvalSupported: false,
+} as const;
 
 class PdfErrorBoundary extends Component<{ src: string; children: ReactNode }, { hasError: boolean }> {
   state = { hasError: false };
   static getDerivedStateFromError() { return { hasError: true }; }
   componentDidCatch(err: unknown) { console.error("PdfPreview crashed", err); }
+  componentDidUpdate(prevProps: { src: string }) {
+    if (prevProps.src !== this.props.src && this.state.hasError) {
+      this.setState({ hasError: false });
+    }
+  }
   render() {
     if (this.state.hasError) {
       return (
@@ -112,6 +126,12 @@ export default function PdfPreview({
   const [numPages, setNumPages] = useState<number | null>(null);
   const [width, setWidth] = useState<number>(800);
   const [error, setError] = useState<string | null>(null);
+  const file = useMemo(() => ({ url: src }), [src]);
+
+  useEffect(() => {
+    setNumPages(null);
+    setError(null);
+  }, [src]);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -143,7 +163,8 @@ export default function PdfPreview({
       ) : (
         <PdfErrorBoundary src={src}>
         <Document
-          file={src}
+          key={src}
+          file={file}
           loading={
             <div className="flex items-center justify-center py-20 text-sm text-muted-foreground">
               <Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading PDF…
@@ -157,18 +178,7 @@ export default function PdfPreview({
             console.error("PDF load error", err);
             setError(err?.message || "Failed to load PDF");
           }}
-          options={{
-            cMapUrl: `https://unpkg.com/pdfjs-dist@${pdfjs.version}/cmaps/`,
-            cMapPacked: true,
-            standardFontDataUrl: `https://unpkg.com/pdfjs-dist@${pdfjs.version}/standard_fonts/`,
-            // Allow range/streaming so large PDFs don't try to buffer the
-            // whole file into memory (which can crash mobile browsers and
-            // wedge desktop tabs to a blank screen).
-            disableAutoFetch: true,
-            disableStream: false,
-            disableRange: false,
-            isEvalSupported: false,
-          }}
+          options={PDF_OPTIONS}
         >
           {Array.from({ length: numPages ?? 0 }, (_, i) => (
             <LazyPage key={i} pageNumber={i + 1} width={renderWidth} />
