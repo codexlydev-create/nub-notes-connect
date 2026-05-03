@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { Component, ReactNode, useEffect, useRef, useState } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 import { Loader2, AlertCircle, ExternalLink } from "lucide-react";
 import "react-pdf/dist/Page/AnnotationLayer.css";
@@ -9,10 +9,33 @@ import "react-pdf/dist/Page/TextLayer.css";
 // react-pdf v9+.
 pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
+class PdfErrorBoundary extends Component<{ src: string; children: ReactNode }, { hasError: boolean }> {
+  state = { hasError: false };
+  static getDerivedStateFromError() { return { hasError: true }; }
+  componentDidCatch(err: unknown) { console.error("PdfPreview crashed", err); }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="p-10 text-center text-sm text-muted-foreground">
+          <AlertCircle className="w-6 h-6 mx-auto mb-2 text-destructive" />
+          The in-app PDF preview hit an error.
+          <div className="mt-2">
+            <a href={this.props.src} target="_blank" rel="noopener noreferrer" className="text-primary underline inline-flex items-center gap-1">
+              <ExternalLink className="w-3 h-3" /> Open the PDF in a new tab
+            </a>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 function LazyPage({ pageNumber, width }: { pageNumber: number; width: number }) {
   const ref = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
   const [renderKey, setRenderKey] = useState(0);
+  const [failed, setFailed] = useState(false);
   useEffect(() => {
     if (!ref.current || visible) return;
     const io = new IntersectionObserver(
@@ -40,7 +63,11 @@ function LazyPage({ pageNumber, width }: { pageNumber: number; width: number }) 
       className="flex justify-center py-3 border-b border-border last:border-b-0"
       style={!visible ? { minHeight: placeholderHeight } : undefined}
     >
-      {visible ? (
+      {failed ? (
+        <div className="text-xs text-muted-foreground py-6">
+          Page {pageNumber} couldn't be rendered.
+        </div>
+      ) : visible ? (
         <Page
           key={`${pageNumber}-${width}-${renderKey}`}
           pageNumber={pageNumber}
@@ -52,8 +79,12 @@ function LazyPage({ pageNumber, width }: { pageNumber: number; width: number }) 
           devicePixelRatio={Math.min(typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1, 2)}
           onRenderError={(err) => {
             console.warn("PDF page render error, retrying", pageNumber, err);
-            // Retry once with a fresh canvas to recover from black/mirrored frames
-            if (renderKey === 0) setTimeout(() => setRenderKey(1), 50);
+            if (renderKey < 1) setTimeout(() => setRenderKey((k) => k + 1), 80);
+            else setFailed(true);
+          }}
+          onLoadError={(err) => {
+            console.warn("PDF page load error", pageNumber, err);
+            setFailed(true);
           }}
           loading={
             <div className="py-10 text-xs text-muted-foreground inline-flex items-center gap-2">
@@ -110,6 +141,7 @@ export default function PdfPreview({
           </div>
         </div>
       ) : (
+        <PdfErrorBoundary src={src}>
         <Document
           file={src}
           loading={
@@ -129,12 +161,12 @@ export default function PdfPreview({
             cMapUrl: `https://unpkg.com/pdfjs-dist@${pdfjs.version}/cmaps/`,
             cMapPacked: true,
             standardFontDataUrl: `https://unpkg.com/pdfjs-dist@${pdfjs.version}/standard_fonts/`,
-            // Disable streaming/range fetching so pdf.js gets the full file
-            // before rendering. This prevents black/mirrored page artifacts
-            // that happen when partial chunks render on desktop.
+            // Allow range/streaming so large PDFs don't try to buffer the
+            // whole file into memory (which can crash mobile browsers and
+            // wedge desktop tabs to a blank screen).
             disableAutoFetch: true,
-            disableStream: true,
-            disableRange: true,
+            disableStream: false,
+            disableRange: false,
             isEvalSupported: false,
           }}
         >
@@ -154,6 +186,7 @@ export default function PdfPreview({
             </div>
           ) : null}
         </Document>
+        </PdfErrorBoundary>
       )}
     </div>
   );
