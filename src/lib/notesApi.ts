@@ -12,8 +12,9 @@ export const notesApi = {
     Object.entries(params).forEach(([k, v]) => {
       if (v !== undefined && v !== null && v !== "") qs.set(k, String(v));
     });
-    return api<{ items: Note[]; total: number; page: number; limit: number }>(
+    return api<{ items: Note[]; total: number; page: number; limit: number; reactions?: Record<string, { liked: boolean; disliked: boolean; saved: boolean }> }>(
       `/api/notes${qs.toString() ? `?${qs}` : ""}`
+      , { auth: true }
     );
   },
   get: (id: string) =>
