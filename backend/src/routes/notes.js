@@ -23,7 +23,7 @@ const router = express.Router();
 const isObjectId = (s) => mongoose.isValidObjectId(s);
 
 /* -------- list (public) -------- */
-router.get("/", async (req, res, next) => {
+router.get("/", optionalAuth, async (req, res, next) => {
   try {
     const { department, course, type, q, courseCode } = req.query;
     const page = Math.max(1, parseInt(req.query.page) || 1);
@@ -39,7 +39,17 @@ router.get("/", async (req, res, next) => {
       Note.find(filter).sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit),
       Note.countDocuments(filter),
     ]);
-    res.json({ items: items.map((n) => n.toPublic()), total, page, limit });
+    let reactions = {};
+    if (req.user && items.length) {
+      const inters = await Interaction.find({
+        user: req.user._id,
+        note: { $in: items.map((n) => n._id) },
+      });
+      reactions = Object.fromEntries(
+        inters.map((i) => [i.note.toString(), { liked: i.liked, disliked: i.disliked, saved: i.saved }])
+      );
+    }
+    res.json({ items: items.map((n) => n.toPublic()), total, page, limit, reactions });
   } catch (e) { next(e); }
 });
 
