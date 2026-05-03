@@ -14,6 +14,7 @@ export default function FindNotes() {
   const [page, setPage] = useState(1);
   const [notes, setNotes] = useState<Note[]>([]);
   const [total, setTotal] = useState(0);
+  const [reactions, setReactions] = useState<Record<string, { liked: boolean; disliked: boolean; saved: boolean }>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -27,7 +28,7 @@ export default function FindNotes() {
       q: filters.title, courseCode: filters.courseCode, studentId: filters.studentId,
       page, limit: PER_PAGE,
     })
-      .then((r) => { if (!active) return; setNotes(r.items); setTotal(r.total); })
+      .then((r) => { if (!active) return; setNotes(r.items); setTotal(r.total); setReactions(r.reactions ?? {}); })
       .catch((e) => { if (!active) return; setError(e.message ?? "Failed to load"); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
@@ -68,7 +69,7 @@ export default function FindNotes() {
             <AnimatePresence mode="popLayout">
               {notes.map((n) => (
                 <div key={n.id} className="mb-4 sm:mb-5 break-inside-avoid">
-                  <NoteCard note={n} />
+                  <NoteCard note={n} initialReactions={reactions[n.id]} />
                 </div>
               ))}
             </AnimatePresence>
