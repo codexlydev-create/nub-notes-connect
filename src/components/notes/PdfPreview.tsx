@@ -12,6 +12,7 @@ pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.vers
 function LazyPage({ pageNumber, width }: { pageNumber: number; width: number }) {
   const ref = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
+  const [renderKey, setRenderKey] = useState(0);
   useEffect(() => {
     if (!ref.current || visible) return;
     const io = new IntersectionObserver(
@@ -41,10 +42,19 @@ function LazyPage({ pageNumber, width }: { pageNumber: number; width: number }) 
     >
       {visible ? (
         <Page
+          key={`${pageNumber}-${width}-${renderKey}`}
           pageNumber={pageNumber}
           width={width}
           renderTextLayer={false}
           renderAnnotationLayer={false}
+          renderMode="canvas"
+          canvasBackground="white"
+          devicePixelRatio={Math.min(typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1, 2)}
+          onRenderError={(err) => {
+            console.warn("PDF page render error, retrying", pageNumber, err);
+            // Retry once with a fresh canvas to recover from black/mirrored frames
+            if (renderKey === 0) setTimeout(() => setRenderKey(1), 50);
+          }}
           loading={
             <div className="py-10 text-xs text-muted-foreground inline-flex items-center gap-2">
               <Loader2 className="w-3 h-3 animate-spin" /> Page {pageNumber}…
@@ -119,8 +129,13 @@ export default function PdfPreview({
             cMapUrl: `https://unpkg.com/pdfjs-dist@${pdfjs.version}/cmaps/`,
             cMapPacked: true,
             standardFontDataUrl: `https://unpkg.com/pdfjs-dist@${pdfjs.version}/standard_fonts/`,
+            // Disable streaming/range fetching so pdf.js gets the full file
+            // before rendering. This prevents black/mirrored page artifacts
+            // that happen when partial chunks render on desktop.
             disableAutoFetch: true,
-            disableStream: false,
+            disableStream: true,
+            disableRange: true,
+            isEvalSupported: false,
           }}
         >
           {Array.from({ length: numPages ?? 0 }, (_, i) => (
