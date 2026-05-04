@@ -59,7 +59,9 @@ export default function Sidebar({ collapsed, setCollapsed, onNavigate }: { colla
 
       <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
         <SectionLabel collapsed={collapsed}>Explore</SectionLabel>
-        {publicLinks.map((l) => <Item key={l.to} {...l} collapsed={collapsed} onNavigate={onNavigate} />)}
+        {publicLinks
+          .filter((l) => (user ? !["/", "/about", "/contact"].includes(l.to) : true))
+          .map((l) => <Item key={l.to} {...l} collapsed={collapsed} onNavigate={onNavigate} />)}
 
         {user && (
           <>
