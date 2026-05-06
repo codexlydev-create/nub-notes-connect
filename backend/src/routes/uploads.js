@@ -11,11 +11,18 @@ import {
   putObjectBuffer,
 } from "../lib/r2.js";
 import { watermarkPdfBuffer } from "../lib/watermark.js";
+import { convertPptxBufferToPdf } from "../lib/pptxConvert.js";
+import { deleteObject } from "../lib/r2.js";
 
 const router = express.Router();
 const MAX_BYTES = 50 * 1024 * 1024; // 50MB
 const AVATAR_MAX_BYTES = 1 * 1024 * 1024; // 1MB
 const AVATAR_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+const PPTX_MIMES = new Set([
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  "application/vnd.ms-powerpoint",
+]);
+const ALLOWED_UPLOAD_MIMES = new Set(["application/pdf", ...PPTX_MIMES]);
 
 /**
  * POST /api/uploads/generate-upload-url
@@ -26,7 +33,9 @@ router.post("/generate-upload-url", requireAuth, async (req, res, next) => {
   try {
     const schema = z.object({
       fileName: z.string().min(1).max(255),
-      fileType: z.literal("application/pdf"),
+      fileType: z.string().refine((t) => ALLOWED_UPLOAD_MIMES.has(t), {
+        message: "Only PDF or PPTX files are allowed",
+      }),
       fileSize: z.coerce.number().int().positive().max(MAX_BYTES).optional(),
     });
     const { fileName, fileType } = schema.parse(req.body);
