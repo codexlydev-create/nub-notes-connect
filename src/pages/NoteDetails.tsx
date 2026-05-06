@@ -126,9 +126,18 @@ export default function NoteDetails() {
               </div>
             </div>
             <div className="max-h-[80vh] overflow-y-auto">
-              <PdfPreview src={fileSrc} onPageCount={(n) => {
-                if (!note.pageCount || note.pageCount !== n) setNote({ ...note, pageCount: n });
-              }} />
+              {/\.pptx?$/i.test(note.fileName || "") ? (
+                <iframe
+                  title="PPTX preview"
+                  src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(fileSrc)}`}
+                  className="w-full h-[80vh] border-0 bg-muted/20"
+                  allowFullScreen
+                />
+              ) : (
+                <PdfPreview src={fileSrc} onPageCount={(n) => {
+                  if (!note.pageCount || note.pageCount !== n) setNote({ ...note, pageCount: n });
+                }} />
+              )}
             </div>
           </div>
         </div>
