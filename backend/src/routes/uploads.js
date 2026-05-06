@@ -116,6 +116,31 @@ router.post("/save-file", requireAuth, async (req, res, next) => {
     let finalKey = data.fileKey || "";
     let finalSize = data.fileSize;
     let finalPageCount = data.pageCount;
+    let finalFileName = data.fileName;
+
+    // If the uploaded file is a PPTX, convert it to PDF (via LibreOffice)
+    // before the watermark step so the rest of the pipeline (preview,
+    // download, watermark) is identical to the PDF flow.
+    const lower = (finalKey || finalFileName).toLowerCase();
+    const isPptx = lower.endsWith(".pptx") || lower.endsWith(".ppt");
+    if (isPptx && finalKey) {
+      try {
+        const raw = await getObjectBuffer(finalKey);
+        const pdfBuffer = await convertPptxBufferToPdf(raw);
+        const newKey = finalKey.replace(/\.pptx?$/i, ".pdf");
+        await putObjectBuffer(newKey, pdfBuffer, "application/pdf");
+        if (newKey !== finalKey) {
+          deleteObject(finalKey).catch(() => {});
+        }
+        finalKey = newKey;
+        finalUrl = publicUrlFor(newKey);
+        finalFileName = finalFileName.replace(/\.pptx?$/i, ".pdf");
+        finalSize = pdfBuffer.length;
+      } catch (err) {
+        console.error("pptx -> pdf conversion failed", err?.message || err);
+        return res.status(500).json({ error: "Failed to convert PPTX to PDF" });
+      }
+    }
 
     // Watermark the PDF in place using the original key.
     if (finalKey) {
@@ -141,7 +166,7 @@ router.post("/save-file", requireAuth, async (req, res, next) => {
       course: data.course,
       courseCode: data.courseCode,
       type: data.type,
-      fileName: data.fileName,
+      fileName: finalFileName,
       fileMime: "application/pdf",
       fileSize: finalSize,
       fileUrl: finalUrl,
