@@ -12,7 +12,7 @@ import {
   deleteObject,
 } from "../lib/r2.js";
 import { watermarkPdfBuffer } from "../lib/watermark.js";
-import { convertPptxBufferToPdf } from "../lib/pptxConvert.js";
+import { watermarkPptxBuffer } from "../lib/pptxWatermark.js";
 
 const router = express.Router();
 const MAX_BYTES = 50 * 1024 * 1024; // 50MB
@@ -117,45 +117,35 @@ router.post("/save-file", requireAuth, async (req, res, next) => {
     let finalSize = data.fileSize;
     let finalPageCount = data.pageCount;
     let finalFileName = data.fileName;
+    const lowerName = (finalKey || finalFileName).toLowerCase();
+    const isPptx = lowerName.endsWith(".pptx") || lowerName.endsWith(".ppt");
+    const finalMime = isPptx
+      ? "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+      : "application/pdf";
 
-    // If the uploaded file is a PPTX, convert it to PDF (via LibreOffice)
-    // before the watermark step so the rest of the pipeline (preview,
-    // download, watermark) is identical to the PDF flow.
-    const lower = (finalKey || finalFileName).toLowerCase();
-    const isPptx = lower.endsWith(".pptx") || lower.endsWith(".ppt");
-    if (isPptx && finalKey) {
-      try {
-        const raw = await getObjectBuffer(finalKey);
-        const pdfBuffer = await convertPptxBufferToPdf(raw);
-        const newKey = finalKey.replace(/\.pptx?$/i, ".pdf");
-        await putObjectBuffer(newKey, pdfBuffer, "application/pdf");
-        if (newKey !== finalKey) {
-          deleteObject(finalKey).catch(() => {});
-        }
-        finalKey = newKey;
-        finalUrl = publicUrlFor(newKey);
-        finalFileName = finalFileName.replace(/\.pptx?$/i, ".pdf");
-        finalSize = pdfBuffer.length;
-      } catch (err) {
-        console.error("pptx -> pdf conversion failed", err?.message || err);
-        return res.status(500).json({ error: "Failed to convert PPTX to PDF" });
-      }
-    }
-
-    // Watermark the PDF in place using the original key.
+    // Watermark in place — PDF or PPTX handled with their respective stampers.
     if (finalKey) {
       try {
         const raw = await getObjectBuffer(finalKey);
-        const { buffer: stamped, pageCount } = await watermarkPdfBuffer(raw, {
-          uploaderName: req.user.name,
-          siteUrl: "diunotes.com",
-        });
-        await putObjectBuffer(finalKey, stamped, "application/pdf");
-        finalSize = stamped.length;
-        finalPageCount = pageCount;
+        if (isPptx) {
+          const { buffer: stamped, pageCount } = await watermarkPptxBuffer(raw, {
+            uploaderName: req.user.name,
+            siteUrl: "diunotes.com",
+          });
+          await putObjectBuffer(finalKey, stamped, finalMime);
+          finalSize = stamped.length;
+          finalPageCount = pageCount;
+        } else {
+          const { buffer: stamped, pageCount } = await watermarkPdfBuffer(raw, {
+            uploaderName: req.user.name,
+            siteUrl: "diunotes.com",
+          });
+          await putObjectBuffer(finalKey, stamped, "application/pdf");
+          finalSize = stamped.length;
+          finalPageCount = pageCount;
+        }
       } catch (err) {
-        // If watermarking fails, fall back to the original file but log it.
-        console.error("watermarkPdfBuffer failed", err?.message || err);
+        console.error("watermark failed", err?.message || err);
       }
     }
 
@@ -167,7 +157,7 @@ router.post("/save-file", requireAuth, async (req, res, next) => {
       courseCode: data.courseCode,
       type: data.type,
       fileName: finalFileName,
-      fileMime: "application/pdf",
+      fileMime: finalMime,
       fileSize: finalSize,
       fileUrl: finalUrl,
       fileKey: finalKey,
