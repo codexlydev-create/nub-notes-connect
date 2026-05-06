@@ -13,6 +13,13 @@ import { ApiError } from "@/lib/api";
 import type { NoteType } from "@/lib/types";
 
 const MAX_BYTES = 50 * 1024 * 1024;
+const ACCEPTED_MIMES = new Set([
+  "application/pdf",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  "application/vnd.ms-powerpoint",
+]);
+const ACCEPT_ATTR =
+  "application/pdf,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.ms-powerpoint,.pdf,.pptx,.ppt";
 
 function formatSize(bytes: number) {
   if (bytes < 1024) return `${bytes} B`;
@@ -72,8 +79,10 @@ export default function Upload() {
 
   function pickFile(f: File | null) {
     if (!f) return;
-    if (f.type !== "application/pdf") {
-      toast.error("Only PDF files are allowed");
+    const name = f.name.toLowerCase();
+    const okByExt = name.endsWith(".pdf") || name.endsWith(".pptx") || name.endsWith(".ppt");
+    if (!ACCEPTED_MIMES.has(f.type) && !okByExt) {
+      toast.error("Only PDF or PPTX files are allowed");
       return;
     }
     if (f.size > MAX_BYTES) {
@@ -81,12 +90,12 @@ export default function Upload() {
       return;
     }
     setFile(f);
-    setTitle(f.name.replace(/\.pdf$/i, ""));
+    setTitle(f.name.replace(/\.(pdf|pptx|ppt)$/i, ""));
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!file) return toast.error("Please select a PDF");
+    if (!file) return toast.error("Please select a PDF or PPTX");
     if (!title.trim()) return toast.error("Please enter a title");
     if (!department || !course || !courseCode) {
       return toast.error("Please fill in all required fields");
@@ -101,9 +110,16 @@ export default function Upload() {
     try {
       setStatus("presigning");
       setProgress(0);
+      const lower = file.name.toLowerCase();
+      const fileType = file.type
+        || (lower.endsWith(".pptx")
+          ? "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+          : lower.endsWith(".ppt")
+          ? "application/vnd.ms-powerpoint"
+          : "application/pdf");
       const { uploadUrl, fileUrl, key } = await uploadsApi.presign({
         fileName: file.name,
-        fileType: "application/pdf",
+        fileType,
         fileSize: file.size,
       });
 
@@ -124,7 +140,7 @@ export default function Upload() {
       } catch { /* non-fatal */ }
 
       const { note } = await uploadsApi.saveFile({
-        title: (title || file.name.replace(/\.pdf$/i, "")).trim(),
+        title: (title || file.name.replace(/\.(pdf|pptx|ppt)$/i, "")).trim(),
         description: description.trim(),
         department,
         course,
@@ -166,7 +182,7 @@ export default function Upload() {
     <div className="max-w-3xl mx-auto px-4 py-8">
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
         <h1 className="text-3xl font-bold tracking-tight">Upload a Note</h1>
-        <p className="text-muted-foreground mt-1">PDF only · up to 50&nbsp;MB · uploaded directly to Cloudflare R2.</p>
+        <p className="text-muted-foreground mt-1">PDF or PPTX · up to 50&nbsp;MB · PPTX is auto-converted to PDF.</p>
       </motion.div>
 
       {status === "done" && savedUrl ? (
@@ -214,15 +230,15 @@ export default function Upload() {
             ) : (
               <div className="flex flex-col items-center gap-2">
                 <UploadCloud className="w-10 h-10 text-muted-foreground" />
-                <div className="font-semibold">Click or drag a PDF here</div>
-                <div className="text-xs text-muted-foreground">Max 50 MB · application/pdf</div>
+                <div className="font-semibold">Click or drag a PDF or PPTX here</div>
+                <div className="text-xs text-muted-foreground">Max 50 MB · .pdf, .pptx</div>
               </div>
             )}
             <input
               id="pdf-input"
               ref={inputRef}
               type="file"
-              accept="application/pdf"
+              accept={ACCEPT_ATTR}
               className="hidden"
               onChange={(e) => pickFile(e.target.files?.[0] ?? null)}
               disabled={isBusy}
