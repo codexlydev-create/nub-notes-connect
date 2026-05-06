@@ -9,10 +9,10 @@ import {
   publicUrlFor,
   getObjectBuffer,
   putObjectBuffer,
+  deleteObject,
 } from "../lib/r2.js";
 import { watermarkPdfBuffer } from "../lib/watermark.js";
 import { convertPptxBufferToPdf } from "../lib/pptxConvert.js";
-import { deleteObject } from "../lib/r2.js";
 
 const router = express.Router();
 const MAX_BYTES = 50 * 1024 * 1024; // 50MB
