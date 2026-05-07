@@ -51,6 +51,10 @@ export default function NoteDetails() {
   const fileSrc = note.fileUrl || noteFileUrl(note.id);
   const downloadName = note.fileName ?? `${note.title}.pdf`;
   const sizeLabel = formatBytes(note.fileSize);
+  const isPptx = /\.pptx?$/i.test(note.fileName || "");
+  const openHref = isPptx
+    ? `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(fileSrc)}`
+    : fileSrc;
 
   const requireAuth = () => {
     if (!user) { toast.error("Please login to continue"); navigate("/login"); return false; }
@@ -146,11 +150,11 @@ export default function NoteDetails() {
           <div className="rounded-2xl bg-card border border-border p-5 shadow-card">
             <div className="text-xs uppercase tracking-widest text-muted-foreground font-semibold mb-3">Actions</div>
             <div className="space-y-2">
-              <a href={fileSrc} target="_blank" rel="noopener noreferrer" className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gradient-primary text-primary-foreground font-semibold shadow-soft hover:opacity-90">
-                <ExternalLink className="w-4 h-4" /> Open PDF
+              <a href={openHref} target="_blank" rel="noopener noreferrer" className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gradient-primary text-primary-foreground font-semibold shadow-soft hover:opacity-90">
+                <ExternalLink className="w-4 h-4" /> {isPptx ? "Open PPTX" : "Open PDF"}
               </a>
               <button onClick={downloadPdf} className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-card border border-border font-semibold hover:bg-muted">
-                <Download className="w-4 h-4" /> Download PDF{sizeLabel ? ` (${sizeLabel})` : ""}
+                <Download className="w-4 h-4" /> Download {isPptx ? "PPTX" : "PDF"}{sizeLabel ? ` (${sizeLabel})` : ""}
               </button>
             </div>
             <div className="mt-3 text-[11px] text-muted-foreground">
