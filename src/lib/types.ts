@@ -33,9 +33,15 @@ export interface User {
   avatar?: string;
   avatarUrl?: string;
   avatarKey?: string;
+  publicContact?: PublicContact | null;
   role?: "Contributor" | "Active Uploader";
   emailVerified?: boolean;
   pendingEmail?: string;
+}
+
+export interface PublicContact {
+  platformName: string;
+  platformUrl: string;
 }
 
 export interface Contributor {

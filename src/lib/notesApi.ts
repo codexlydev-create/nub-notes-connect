@@ -1,5 +1,6 @@
 import { api } from "./api";
 import type { Note } from "./types";
+import type { PublicContact } from "./types";
 
 export interface ListParams {
   department?: string; course?: string; type?: string;
@@ -45,7 +46,7 @@ export const notesApi = {
 export const contributorsApi = {
   list: () =>
     api<{
-      items: Array<{ id: string; name: string; studentId: string; department?: string; avatarUrl?: string; uploads: number; totalViews: number; totalLikes: number; totalDislikes: number }>;
+      items: Array<{ id: string; name: string; studentId: string; department?: string; avatarUrl?: string; publicContact?: PublicContact | null; uploads: number; totalViews: number; totalLikes: number; totalDislikes: number }>;
     }>("/api/users/contributors"),
 };
 

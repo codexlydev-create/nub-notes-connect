@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
-import type { User } from "@/lib/types";
+import type { PublicContact, User } from "@/lib/types";
 import { api, ApiError, getToken, setToken } from "@/lib/api";
 
 interface AuthCtx {
@@ -17,7 +17,7 @@ interface AuthCtx {
   sendResetOtp: (email: string) => Promise<void>;
   /** Verify the reset OTP and set the new password. */
   resetPassword: (email: string, otp: string, newPassword: string) => Promise<void>;
-  updateProfile: (patch: { name?: string; studentId?: string; department?: string; avatarUrl?: string; avatarKey?: string }) => Promise<User>;
+  updateProfile: (patch: { name?: string; studentId?: string; department?: string; avatarUrl?: string; avatarKey?: string; publicContact?: PublicContact | null }) => Promise<User>;
   /** Remove the user's avatar. */
   deleteAvatar: () => Promise<User>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;

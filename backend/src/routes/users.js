@@ -4,6 +4,7 @@ import { z } from "zod";
 import User from "../models/User.js";
 import Note from "../models/Note.js";
 import { requireAuth } from "../lib/auth.js";
+import { publicContactSchema } from "../lib/suggestionSchemas.js";
 
 const router = express.Router();
 
@@ -32,7 +33,7 @@ router.get("/contributors", async (_req, res, next) => {
     const ids = rows.map((r) => r._id).filter(Boolean);
     if (ids.length) {
       const users = await User.find({ _id: { $in: ids } }).select(
-        "_id name studentId department avatarUrl"
+        "_id name studentId department avatarUrl publicContact"
       );
       const map = new Map(users.map((u) => [u._id.toString(), u]));
       rows.forEach((r) => {
@@ -43,6 +44,9 @@ router.get("/contributors", async (_req, res, next) => {
         r.studentId = u.studentId || r.studentId || "";
         r.department = u.department || r.department || "";
         r.avatarUrl = u.avatarUrl ?? "";
+        r.publicContact = u.publicContact?.platformName && u.publicContact?.platformUrl
+          ? { platformName: u.publicContact.platformName, platformUrl: u.publicContact.platformUrl }
+          : null;
       });
     }
     res.json({
@@ -52,6 +56,7 @@ router.get("/contributors", async (_req, res, next) => {
         studentId: r.studentId || "",
         department: r.department || "",
         avatarUrl: r.avatarUrl || "",
+        publicContact: r.publicContact || null,
         uploads: r.uploads,
         totalViews: r.totalViews,
         totalLikes: r.totalLikes,
@@ -71,6 +76,7 @@ router.patch("/me", requireAuth, async (req, res, next) => {
       bio: z.string().max(500).optional(),
       avatarUrl: z.string().url().max(500).optional().or(z.literal("")),
       avatarKey: z.string().max(512).optional().or(z.literal("")),
+      publicContact: publicContactSchema.nullable().optional(),
     });
     const patch = schema.parse(req.body);
     Object.assign(req.user, patch);
