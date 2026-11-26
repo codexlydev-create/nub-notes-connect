@@ -131,8 +131,9 @@ export default function Suggestions() {
       toast.error(parsed.error.issues[0]?.message || "Enter a comment");
       throw new Error("Comment validation failed");
     }
+    const validatedText = parsed.data.text ?? data.text.trim();
     try {
-      const result = await suggestionsApi.addComment(id, { ...parsed.data, parentCommentId: data.parentCommentId });
+      const result = await suggestionsApi.addComment(id, { text: validatedText, parentCommentId: data.parentCommentId });
       setItems((current) => current.map((item) => item.id === id
         ? { ...item, comments: [...item.comments, result.comment] }
         : item));

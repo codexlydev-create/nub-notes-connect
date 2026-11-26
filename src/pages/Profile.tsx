@@ -145,7 +145,12 @@ export default function Profile() {
     }
     setContactSaving(true);
     try {
-      await updateProfile({ publicContact: parsed.data });
+      await updateProfile({
+        publicContact: {
+          platformName: parsed.data.platformName ?? contactForm.platformName.trim(),
+          platformUrl: parsed.data.platformUrl ?? contactForm.platformUrl.trim(),
+        },
+      });
       setContactEditing(false);
       toast.success("Public contact saved");
     } catch (err: any) {
