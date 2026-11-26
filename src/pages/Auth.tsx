@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Eye, EyeOff, GraduationCap, Mail, Lock, User, IdCard, ArrowRight, KeyRound, Building2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
@@ -23,6 +23,13 @@ export default function Auth({ mode: initial = "login" as Mode }: { mode?: Mode 
   const [mode, setMode] = useState<Mode>(initial);
   const { login, beginRegister, completeRegister, resendOtp, sendResetOtp, resetPassword } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const locationState = location.state as { from?: unknown } | null;
+  const returnTo = typeof locationState?.from === "string"
+    && locationState.from.startsWith("/")
+    && !locationState.from.startsWith("//")
+    ? locationState.from
+    : "/dashboard";
   const [show, setShow] = useState(false);
   const [form, setForm] = useState({ name: "", email: "", studentId: "", department: "", password: "", confirm: "", otp: "" });
   const [loading, setLoading] = useState(false);
@@ -43,7 +50,7 @@ export default function Auth({ mode: initial = "login" as Mode }: { mode?: Mode 
       if (mode === "login") {
         await login(form.email, form.password);
         toast.success("Welcome back!");
-        navigate("/dashboard");
+        navigate(returnTo, { replace: true });
       } else if (mode === "register") {
         const isOther = form.department === "__other__";
         const finalDept = isOther ? customDept.trim() : form.department;

@@ -2,7 +2,7 @@ import { NavLink, useLocation } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
-  Home, Search, Users, Info, Mail, LayoutDashboard, LogIn, Bookmark,
+  Home, Search, Users, Info, Mail, LayoutDashboard, LogIn, Bookmark, MessageSquareText,
   ChevronLeft, ChevronRight, LogOut, Moon, Sun, UserCircle2, UploadCloud,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
@@ -16,6 +16,7 @@ const publicLinks = [
   { to: "/", label: "Home", icon: Home },
   { to: "/find", label: "Find Notes", icon: Search },
   { to: "/contributors", label: "Contributors", icon: Users },
+  { to: "/suggestions", label: "Suggestions", icon: MessageSquareText },
   { to: "/about", label: "About", icon: Info },
   { to: "/contact", label: "Contact", icon: Mail },
 ];

@@ -1,13 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Mail, IdCard, User as UserIcon, BadgeCheck, Lock, ShieldAlert, KeyRound, Eye, EyeOff, Building2, Camera, Trash2, Loader2 } from "lucide-react";
+import { Mail, IdCard, User as UserIcon, BadgeCheck, Lock, ShieldAlert, KeyRound, Eye, EyeOff, Building2, Camera, Trash2, Loader2, ExternalLink, Pencil } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 import { taxonomyApi } from "@/lib/taxonomyApi";
 import { DEPARTMENTS } from "@/data/seed";
 import UserAvatar from "@/components/UserAvatar";
 import { uploadsApi, putToPresignedUrl } from "@/lib/uploadsApi";
+import { publicContactSchema } from "@/lib/communitySchemas";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 const AVATAR_MAX_BYTES = 1 * 1024 * 1024;
 const AVATAR_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
@@ -27,6 +30,9 @@ export default function Profile() {
   const [pwSaving, setPwSaving] = useState(false);
   const [photoBusy, setPhotoBusy] = useState(false);
   const photoRef = useRef<HTMLInputElement>(null);
+  const [contactForm, setContactForm] = useState({ platformName: "", platformUrl: "" });
+  const [contactEditing, setContactEditing] = useState(false);
+  const [contactSaving, setContactSaving] = useState(false);
 
   // Only redirect once auth has finished hydrating — otherwise a refresh
   // briefly shows `user === null` and kicks the user to /login.
@@ -111,6 +117,56 @@ export default function Profile() {
       setOtp(""); setOtpSent(false);
     } catch (err: any) {
       toast.error(err?.message ?? "Invalid code");
+    }
+  };
+
+  const editPublicContact = () => {
+    setContactForm({
+      platformName: user.publicContact?.platformName ?? "",
+      platformUrl: user.publicContact?.platformUrl ?? "",
+    });
+    setContactEditing(true);
+  };
+
+  const cancelPublicContact = () => {
+    setContactForm({
+      platformName: user.publicContact?.platformName ?? "",
+      platformUrl: user.publicContact?.platformUrl ?? "",
+    });
+    setContactEditing(false);
+  };
+
+  const savePublicContact = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const parsed = publicContactSchema.safeParse(contactForm);
+    if (!parsed.success) {
+      toast.error(parsed.error.issues[0]?.message || "Check the public contact details");
+      return;
+    }
+    setContactSaving(true);
+    try {
+      await updateProfile({ publicContact: parsed.data });
+      setContactEditing(false);
+      toast.success("Public contact saved");
+    } catch (err: any) {
+      toast.error(err?.message ?? "Could not save public contact");
+    } finally {
+      setContactSaving(false);
+    }
+  };
+
+  const removePublicContact = async () => {
+    if (!user.publicContact || !window.confirm("Remove your public contact link?")) return;
+    setContactSaving(true);
+    try {
+      await updateProfile({ publicContact: null });
+      setContactEditing(false);
+      setContactForm({ platformName: "", platformUrl: "" });
+      toast.success("Public contact removed");
+    } catch (err: any) {
+      toast.error(err?.message ?? "Could not remove public contact");
+    } finally {
+      setContactSaving(false);
     }
   };
 
@@ -349,6 +405,48 @@ export default function Profile() {
 
       <motion.div
         initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+        className="rounded-3xl bg-card border border-border shadow-card p-6 md:p-8 mb-6"
+      >
+        <h2 className="text-lg font-bold mb-1">Public contact</h2>
+        <p className="text-sm text-muted-foreground mb-5">This link is visible to everyone on the Contributors page.</p>
+        {contactEditing ? (
+          <form onSubmit={savePublicContact} className="space-y-4">
+            <div className="space-y-2">
+              <label htmlFor="public-platform-name" className="text-sm font-medium">Platform name</label>
+              <Input id="public-platform-name" value={contactForm.platformName} maxLength={60} required placeholder="e.g. LinkedIn" onChange={(event) => setContactForm((current) => ({ ...current, platformName: event.target.value }))} />
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="public-platform-url" className="text-sm font-medium">Platform URL</label>
+              <Input id="public-platform-url" type="url" value={contactForm.platformUrl} maxLength={2048} required placeholder="https://…" onChange={(event) => setContactForm((current) => ({ ...current, platformUrl: event.target.value }))} />
+            </div>
+            <div className="flex flex-wrap justify-end gap-2">
+              <Button type="button" variant="outline" onClick={cancelPublicContact} disabled={contactSaving}>Cancel</Button>
+              <Button type="submit" disabled={contactSaving}>
+                {contactSaving && <Loader2 className="h-4 w-4 animate-spin" />}
+                {contactSaving ? "Saving…" : "Save"}
+              </Button>
+            </div>
+          </form>
+        ) : user.publicContact ? (
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <a href={user.publicContact.platformUrl} target="_blank" rel="noopener noreferrer" className="inline-flex min-w-0 items-center gap-2 font-medium text-primary hover:underline">
+              <span className="truncate">{user.publicContact.platformName}</span>
+              <ExternalLink className="h-4 w-4 shrink-0" />
+            </a>
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" onClick={editPublicContact}><Pencil /> Edit</Button>
+              <Button type="button" variant="outline" className="text-destructive" onClick={() => void removePublicContact()} disabled={contactSaving}>
+                {contactSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />} Remove
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <Button type="button" variant="outline" onClick={editPublicContact}>Add public contact</Button>
+        )}
+      </motion.div>
+
+      <motion.div
+        initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
         className="rounded-3xl bg-card border border-border shadow-card p-6 md:p-8"
       >
         <h2 className="text-lg font-bold mb-1">Change password</h2>
@@ -367,6 +465,7 @@ export default function Profile() {
     </div>
   );
 }
+
 
 function Label({ children }: { children: React.ReactNode }) {
   return <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5 block">{children}</label>;

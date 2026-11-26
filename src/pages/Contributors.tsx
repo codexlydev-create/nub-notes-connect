@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { Search, FileText, Eye, ThumbsUp, ThumbsDown, Users, Crown, Medal, Award, Copy, Check } from "lucide-react";
+import { Search, FileText, Eye, ThumbsUp, ThumbsDown, Users, Crown, Medal, Award, Copy, Check, ExternalLink } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { contributorsApi } from "@/lib/notesApi";
 import { toast } from "sonner";
 import UserAvatar from "@/components/UserAvatar";
 import { abbr } from "@/lib/department";
 
-type Row = { id: string; name: string; studentId: string; department?: string; avatarUrl?: string; uploads: number; totalViews: number; totalLikes: number; totalDislikes: number };
+type Row = { id: string; name: string; studentId: string; department?: string; avatarUrl?: string; publicContact?: { platformName: string; platformUrl: string } | null; uploads: number; totalViews: number; totalLikes: number; totalDislikes: number };
 type SortKey = "rank" | "notes" | "likes" | "views" | "dislikes";
 
 export default function Contributors() {
@@ -112,9 +112,9 @@ export default function Contributors() {
 
       <div className="rounded-2xl bg-card border border-border shadow-card overflow-hidden">
         <div className="max-h-[70vh] overflow-y-auto overflow-x-auto">
-        <div className="min-w-[820px] md:min-w-0">
-        <div className="grid grid-cols-[60px_1.4fr_1.1fr_80px_70px_80px_70px_80px] items-center gap-4 px-5 py-3 border-b border-border text-[11px] uppercase tracking-wider text-muted-foreground font-semibold bg-muted/30 sticky top-0 z-10 bg-card">
-          <div>Rank</div><div>Contributor</div><div>Student ID</div><div>Dept</div><div>Notes</div><div>Views</div><div>Likes</div><div>Dislikes</div>
+        <div className="min-w-[1040px]">
+        <div className="grid grid-cols-[60px_1.4fr_1.1fr_80px_70px_80px_70px_80px_1fr] items-center gap-4 px-5 py-3 border-b border-border text-[11px] uppercase tracking-wider text-muted-foreground font-semibold bg-muted/30 sticky top-0 z-10 bg-card">
+          <div>Rank</div><div>Contributor</div><div>Student ID</div><div>Dept</div><div>Notes</div><div>Views</div><div>Likes</div><div>Dislikes</div><div>Contact</div>
         </div>
         {loading ? (
           Array.from({ length: 6 }).map((_, i) => (
@@ -133,7 +133,7 @@ export default function Contributors() {
         ) : (
           filtered.map((c, i) => (
             <motion.div key={c.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}
-              className="grid grid-cols-[60px_1.4fr_1.1fr_80px_70px_80px_70px_80px] items-center gap-4 px-5 py-4 border-b border-border last:border-b-0 hover:bg-muted/30">
+              className="grid grid-cols-[60px_1.4fr_1.1fr_80px_70px_80px_70px_80px_1fr] items-center gap-4 px-5 py-4 border-b border-border last:border-b-0 hover:bg-muted/30">
               <RankBadge rank={i + 1} />
               <div className="flex items-center gap-3 min-w-0">
                 <UserAvatar name={c.name} photoUrl={c.avatarUrl} className="w-10 h-10" />
@@ -173,6 +173,13 @@ export default function Contributors() {
               <div className="text-sm">{c.totalViews.toLocaleString()}</div>
               <div className="text-sm">{c.totalLikes.toLocaleString()}</div>
               <div className="text-sm">{c.totalDislikes.toLocaleString()}</div>
+              <div className="min-w-0">
+                {c.publicContact && isSafeWebUrl(c.publicContact.platformUrl) ? (
+                  <a href={c.publicContact.platformUrl} target="_blank" rel="noopener noreferrer" className="inline-flex max-w-full items-center gap-1.5 text-sm font-medium text-primary hover:underline" title={c.publicContact.platformName}>
+                    <span className="truncate">{c.publicContact.platformName}</span><ExternalLink className="h-3.5 w-3.5 shrink-0" />
+                  </a>
+                ) : <span className="text-xs text-muted-foreground">—</span>}
+              </div>
             </motion.div>
           ))
         )}
@@ -181,6 +188,15 @@ export default function Contributors() {
       </div>
     </div>
   );
+}
+
+function isSafeWebUrl(value: string) {
+  try {
+    const protocol = new URL(value).protocol;
+    return protocol === "http:" || protocol === "https:";
+  } catch {
+    return false;
+  }
 }
 
 function RankBadge({ rank }: { rank: number }) {

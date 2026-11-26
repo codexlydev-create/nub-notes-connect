@@ -16,6 +16,7 @@ import Dashboard from "./pages/dashboard/Dashboard";
 import Saved from "./pages/dashboard/Saved";
 import Profile from "./pages/Profile";
 import Upload from "./pages/Upload";
+import Suggestions from "./pages/Suggestions";
 import { AuthProvider } from "./context/AuthContext";
 import { ThemeProvider } from "./context/ThemeContext";
 import { ContributorRankProvider } from "./hooks/useContributorRanks";
@@ -40,6 +41,7 @@ const App = () => {
                   <Route path="/find" element={<FindNotes />} />
                   <Route path="/notes/:id" element={<NoteDetails />} />
                   <Route path="/contributors" element={<Contributors />} />
+                  <Route path="/suggestions" element={<Suggestions />} />
                   <Route path="/about" element={<About />} />
                   <Route path="/contact" element={<Contact />} />
                   <Route path="/dashboard" element={<Dashboard />} />
